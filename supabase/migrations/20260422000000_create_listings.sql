@@ -1,0 +1,18 @@
+create table listings (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  posted_at timestamptz,
+  apify_id text unique,
+  author_name text,
+  group_title text,
+  post_url text,
+  raw_text text,
+  image_urls text[],
+  ocr_text text,
+  price_monthly int,
+  neighborhood text,
+  lease_type text check (lease_type in ('long-term', 'sublet', 'unknown')),
+  ai_score int check (ai_score between 1 and 10),
+  ai_summary text,
+  status text default 'new' check (status in ('new', 'read', 'reached_out'))
+);
