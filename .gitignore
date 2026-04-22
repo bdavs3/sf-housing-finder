@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+supabase/.branches
+supabase/.temp
+
+CLAUDE.md
+.mcp.json
