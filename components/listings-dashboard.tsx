@@ -37,6 +37,7 @@ export function ListingsDashboard() {
   const [lightbox, setLightbox] = useState<{ urls: string[]; idx: number } | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [scoringCount, setScoringCount] = useState(0)
+  const [scrapeStatus, setScrapeStatus] = useState<"idle" | "scraping" | "ingesting">("idle")
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -60,6 +61,21 @@ export function ListingsDashboard() {
         setListings((data as Listing[]) ?? [])
         setLoading(false)
       })
+  }, [])
+
+  useEffect(() => {
+    supabase.from("scrape_status").select("status").eq("id", 1).single().then(({ data }) => {
+      if (data) setScrapeStatus(data.status as "idle" | "scraping" | "ingesting")
+    })
+
+    const statusChannel = supabase
+      .channel("scrape-status-realtime")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "scrape_status" }, (payload) => {
+        setScrapeStatus(payload.new.status as "idle" | "scraping" | "ingesting")
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(statusChannel) }
   }, [])
 
   useEffect(() => {
@@ -130,7 +146,13 @@ export function ListingsDashboard() {
         <Home className="block md:hidden w-5 h-5 shrink-0" />
         <div className="flex items-center gap-3 min-w-0">
           {scrapeMsg && <span className="hidden md:block text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
-          {scoringCount > 0 && (
+          {scrapeStatus === "scraping" && (
+            <span className="text-xs text-muted-foreground shrink-0 animate-pulse">scraping…</span>
+          )}
+          {scrapeStatus === "ingesting" && (
+            <span className="text-xs text-muted-foreground shrink-0 animate-pulse">ingesting…</span>
+          )}
+          {scrapeStatus === "idle" && scoringCount > 0 && (
             <span className="text-xs text-muted-foreground shrink-0 animate-pulse">
               scoring {scoringCount}…
             </span>

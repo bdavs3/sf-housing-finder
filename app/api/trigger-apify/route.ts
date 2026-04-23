@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/client"
 
 export async function POST() {
   try {
@@ -36,6 +37,18 @@ export async function POST() {
     } catch {
       data = { raw: text }
     }
+
+    if (res.ok) {
+      const runId = (data as { data?: { id?: string } })?.data?.id ?? null
+      const supabase = createClient()
+      await supabase.from("scrape_status").update({
+        status: "scraping",
+        run_id: runId,
+        started_at: new Date().toISOString(),
+        post_count: null,
+      }).eq("id", 1)
+    }
+
     return NextResponse.json(data, { status: res.status })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })

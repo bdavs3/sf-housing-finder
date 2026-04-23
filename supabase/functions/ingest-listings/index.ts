@@ -100,15 +100,22 @@ Deno.serve(async (req: Request) => {
     posts = Array.isArray(body) ? body : [body as ApifyPost]
   }
 
+  await supabase.from("scrape_status").update({
+    status: "ingesting",
+    post_count: posts.length,
+    started_at: new Date().toISOString(),
+  }).eq("id", 1)
+
   const newIds = await ingestPosts(supabase, posts)
 
-  // Fire scoring in the background, staggered 1.5s apart to stay under the
-  // 50 RPM Claude rate limit when ingesting large batches.
+  // Fire scoring in the background, staggered 7s apart to stay under the
+  // 30,000 TPM Claude rate limit (~3,080 tokens/request = ~8/min max).
   const scoringPromise = (async () => {
     for (let i = 0; i < newIds.length; i++) {
       if (i > 0) await new Promise((r) => setTimeout(r, 7000))
       supabase.functions.invoke("score-listing", { body: { id: newIds[i] } })
     }
+    await supabase.from("scrape_status").update({ status: "idle", post_count: null }).eq("id", 1)
   })()
   try {
     EdgeRuntime.waitUntil(scoringPromise)
