@@ -106,7 +106,7 @@ Deno.serve(async (req: Request) => {
   // 50 RPM Claude rate limit when ingesting large batches.
   const scoringPromise = (async () => {
     for (let i = 0; i < newIds.length; i++) {
-      if (i > 0) await new Promise((r) => setTimeout(r, 1500))
+      if (i > 0) await new Promise((r) => setTimeout(r, 7000))
       supabase.functions.invoke("score-listing", { body: { id: newIds[i] } })
     }
   })()

@@ -1,6 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "jsr:@supabase/supabase-js@2"
-import Anthropic from "npm:@anthropic-ai/sdk"
 
 const SYSTEM_PROMPT = "<Redacted>"
 
@@ -21,8 +20,6 @@ Deno.serve(async (req: Request) => {
   if (!listing) {
     return new Response("Not found", { status: 404 })
   }
-
-  const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") })
 
   const imageUrls: string[] = listing.image_urls ?? []
   console.log(`[score-listing] id=${id} images=${imageUrls.length}`)
@@ -57,21 +54,28 @@ Deno.serve(async (req: Request) => {
     text: `Post text:\n${listing.raw_text ?? "(none)"}\n\nOCR text from images:\n${listing.ocr_text ?? "(none)"}`,
   }
 
-  let response
+  let response: Record<string, unknown>
   try {
-    response = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1024,
-    system: [
-      {
-        type: "text",
-        text: SYSTEM_PROMPT,
-        // @ts-ignore cache_control is supported at runtime
-        cache_control: { type: "ephemeral" },
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
+        "anthropic-version": "2023-06-01",
       },
-    ],
-    messages: [{ role: "user", content: [...imageBlocks, textBlock] }],
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1024,
+        system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+        messages: [{ role: "user", content: [...imageBlocks, textBlock] }],
+      }),
     })
+    if (!res.ok) {
+      const body = await res.text()
+      console.log(`[score-listing] anthropic error: ${res.status} ${body}`)
+      return new Response(`Anthropic error: ${res.status} ${body}`, { status: 500 })
+    }
+    response = await res.json()
   } catch (err) {
     console.log(`[score-listing] anthropic error: ${err}`)
     return new Response(`Anthropic error: ${err}`, { status: 500 })
@@ -79,7 +83,8 @@ Deno.serve(async (req: Request) => {
 
   console.log(`[score-listing] claude stop_reason=${response.stop_reason} usage=${JSON.stringify(response.usage)}`)
 
-  const text = response.content[0].type === "text" ? response.content[0].text : ""
+  const content = response.content as Array<{ type: string; text: string }>
+  const text = content[0]?.type === "text" ? content[0].text : ""
   console.log(`[score-listing] raw response: ${text.slice(0, 300)}`)
 
   const jsonMatch = text.match(/\{[\s\S]*\}/)
