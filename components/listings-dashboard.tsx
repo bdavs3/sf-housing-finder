@@ -62,13 +62,15 @@ export function ListingsDashboard() {
     try {
       const res = await fetch("/api/trigger-apify", { method: "POST" })
       const data = await res.json()
-      setScrapeMsg(
-        res.ok
-          ? `Run started: ${data.data?.id ?? "ok"}`
-          : `Error: ${data.error?.message ?? data.message ?? "unknown"}`,
-      )
-    } catch {
-      setScrapeMsg("Failed to start scrape")
+      if (res.ok) {
+        setScrapeMsg(`Run started: ${data.data?.id ?? data.id ?? "ok"}`)
+      } else {
+        const msg =
+          data?.error?.message ?? data?.error ?? data?.message ?? data?.raw ?? JSON.stringify(data)
+        setScrapeMsg(`Apify error ${res.status}: ${msg}`)
+      }
+    } catch (err) {
+      setScrapeMsg(`Failed: ${String(err)}`)
     }
     setScraping(false)
   }

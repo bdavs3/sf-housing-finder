@@ -17,20 +17,15 @@ interface ApifyPost {
   media?: ApifyMedia[]
 }
 
-Deno.serve(async (req: Request) => {
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  )
+async function fetchDatasetItems(datasetId: string): Promise<ApifyPost[]> {
+  const token = Deno.env.get("APIFY_API_TOKEN")
+  const url = `https://api.apify.com/v2/datasets/${datasetId}/items?token=${token}&clean=true`
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`Failed to fetch dataset: ${res.status}`)
+  return res.json()
+}
 
-  let posts: ApifyPost[]
-  try {
-    const body = await req.json()
-    posts = Array.isArray(body) ? body : [body]
-  } catch {
-    return new Response("Invalid JSON", { status: 400 })
-  }
-
+async function ingestPosts(supabase: ReturnType<typeof createClient>, posts: ApifyPost[]) {
   const newIds: string[] = []
 
   for (const post of posts) {
@@ -65,9 +60,54 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  await Promise.all(
+  return newIds
+}
+
+Deno.serve(async (req: Request) => {
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  )
+
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return new Response("Invalid JSON", { status: 400 })
+  }
+
+  let posts: ApifyPost[]
+
+  // Apify webhook payload has eventData.defaultDatasetId
+  if (
+    body &&
+    typeof body === "object" &&
+    !Array.isArray(body) &&
+    "eventData" in (body as object)
+  ) {
+    const datasetId = (body as { eventData: { defaultDatasetId?: string } }).eventData
+      ?.defaultDatasetId
+    if (!datasetId) {
+      return new Response("No defaultDatasetId in webhook payload", { status: 400 })
+    }
+    posts = await fetchDatasetItems(datasetId)
+  } else {
+    // Direct array of posts (manual invocation)
+    posts = Array.isArray(body) ? body : [body as ApifyPost]
+  }
+
+  const newIds = await ingestPosts(supabase, posts)
+
+  // Fire scoring in the background — waitUntil keeps them alive in production,
+  // but we return the response regardless so the webhook always gets a 200.
+  const scoringPromise = Promise.all(
     newIds.map((id) => supabase.functions.invoke("score-listing", { body: { id } })),
   )
+  try {
+    EdgeRuntime.waitUntil(scoringPromise)
+  } catch {
+    // Local runtime may not support waitUntil; scoring fires and response returns
+  }
 
   return new Response(JSON.stringify({ ingested: newIds.length }), {
     headers: { "Content-Type": "application/json" },
