@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { ListingCard } from "./listing-card"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, Star } from "lucide-react"
 
 export type Listing = {
   id: string
@@ -22,6 +22,7 @@ export type Listing = {
   ai_score: number | null
   ai_summary: string | null
   status: "new" | "read" | "reached_out"
+  favorited: boolean
 }
 
 const supabase = createClient()
@@ -32,6 +33,7 @@ export function ListingsDashboard() {
   const [scraping, setScraping] = useState(false)
   const [scrapeMsg, setScrapeMsg] = useState("")
   const [lightbox, setLightbox] = useState<{ urls: string[]; idx: number } | null>(null)
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -56,6 +58,16 @@ export function ListingsDashboard() {
         setLoading(false)
       })
   }, [])
+
+  const updateStatus = async (id: string, status: Listing["status"]) => {
+    setListings((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)))
+    await supabase.from("listings").update({ status }).eq("id", id)
+  }
+
+  const toggleFavorited = async (id: string, favorited: boolean) => {
+    setListings((prev) => prev.map((l) => (l.id === id ? { ...l, favorited } : l)))
+    await supabase.from("listings").update({ favorited }).eq("id", id)
+  }
 
   const triggerScrape = async () => {
     setScraping(true)
@@ -84,6 +96,13 @@ export function ListingsDashboard() {
           {scrapeMsg && <span className="text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
           <span className="text-xs text-muted-foreground">{listings.length} listings</span>
           <button
+            onClick={() => setFavoritesOnly((v) => !v)}
+            className={`transition-colors ${favoritesOnly ? "text-yellow-400" : "text-muted-foreground hover:text-foreground"}`}
+            title={favoritesOnly ? "Show all" : "Show favorites"}
+          >
+            <Star className={`w-4 h-4 ${favoritesOnly ? "fill-yellow-400" : ""}`} />
+          </button>
+          <button
             onClick={triggerScrape}
             disabled={scraping}
             className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
@@ -97,18 +116,25 @@ export function ListingsDashboard() {
       <main className="px-6 py-4">
         {loading ? (
           <p className="text-center text-muted-foreground py-20">Loading...</p>
-        ) : listings.length === 0 ? (
-          <p className="text-center text-muted-foreground py-20">No listings found.</p>
         ) : (
-          <div className="border rounded-lg overflow-hidden">
-            {listings.map((listing) => (
-              <ListingCard
-                key={listing.id}
-                listing={listing}
-                onOpenLightbox={(urls, idx) => setLightbox({ urls, idx })}
-              />
-            ))}
-          </div>
+          (() => {
+            const visible = favoritesOnly ? listings.filter((l) => l.favorited) : listings
+            return visible.length === 0 ? (
+              <p className="text-center text-muted-foreground py-20">No listings found.</p>
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
+                {visible.map((listing) => (
+                  <ListingCard
+                    key={listing.id}
+                    listing={listing}
+                    onStatusChange={updateStatus}
+                    onToggleFavorited={toggleFavorited}
+                    onOpenLightbox={(urls, idx) => setLightbox({ urls, idx })}
+                  />
+                ))}
+              </div>
+            )
+          })()
         )}
       </main>
 
