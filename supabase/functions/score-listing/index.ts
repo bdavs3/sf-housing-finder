@@ -24,16 +24,28 @@ Deno.serve(async (req: Request) => {
 
   const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") })
 
-  const userContent: Anthropic.ContentBlockParam[] = [
-    {
-      type: "text",
-      text: `Post text:\n${listing.raw_text ?? "(none)"}\n\nOCR text from images:\n${listing.ocr_text ?? "(none)"}`,
-    },
-  ]
+  const imageUrls: string[] = listing.image_urls ?? []
+  const imageBlocks: unknown[] = await Promise.all(
+    imageUrls.slice(0, 4).map(async (url) => {
+      try {
+        const res = await fetch(url)
+        if (!res.ok) return null
+        const buf = await res.arrayBuffer()
+        const bytes = new Uint8Array(buf)
+        let binary = ""
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+        const data = btoa(binary)
+        const media_type = (res.headers.get("content-type") ?? "image/jpeg").split(";")[0]
+        return { type: "image", source: { type: "base64", media_type, data } }
+      } catch {
+        return null
+      }
+    }),
+  ).then((blocks) => blocks.filter(Boolean))
 
-  const imageUrls: string[] = ((listing.image_urls as string[]) ?? []).slice(0, 3)
-  for (const url of imageUrls) {
-    userContent.push({ type: "image", source: { type: "url", url } })
+  const textBlock = {
+    type: "text",
+    text: `Post text:\n${listing.raw_text ?? "(none)"}\n\nOCR text from images:\n${listing.ocr_text ?? "(none)"}`,
   }
 
   const response = await anthropic.messages.create({
@@ -47,7 +59,7 @@ Deno.serve(async (req: Request) => {
         cache_control: { type: "ephemeral" },
       },
     ],
-    messages: [{ role: "user", content: userContent }],
+    messages: [{ role: "user", content: [...imageBlocks, textBlock] }],
   })
 
   const text = response.content[0].type === "text" ? response.content[0].text : ""

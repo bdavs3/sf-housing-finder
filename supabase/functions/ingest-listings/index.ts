@@ -1,10 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "jsr:@supabase/supabase-js@2"
 
-interface ApifyMedia {
-  url: string
+interface ApifyAttachment {
+  url?: string
   thumbnail?: string
   ocrText?: string
+  image?: { uri?: string }
 }
 
 interface ApifyPost {
@@ -14,7 +15,7 @@ interface ApifyPost {
   url?: string
   time?: string
   text?: string
-  media?: ApifyMedia[]
+  attachments?: ApifyAttachment[]
 }
 
 async function fetchDatasetItems(datasetId: string): Promise<ApifyPost[]> {
@@ -31,12 +32,13 @@ async function ingestPosts(supabase: ReturnType<typeof createClient>, posts: Api
   for (const post of posts) {
     if (!post.legacyId) continue
 
-    const imageUrls = post.media?.map((m) => m.url).filter(Boolean) ?? []
-    const ocrText =
-      post.media
-        ?.map((m) => m.ocrText ?? "")
-        .filter(Boolean)
-        .join("\n") ?? ""
+    const imageUrls = post.attachments
+      ?.map((a) => a.image?.uri ?? a.url)
+      .filter((u): u is string => Boolean(u) && !u.includes("facebook.com/")) ?? []
+    const ocrText = post.attachments
+      ?.map((a) => a.ocrText ?? "")
+      .filter(Boolean)
+      .join("\n") ?? ""
 
     const { data } = await supabase
       .from("listings")
@@ -73,7 +75,6 @@ Deno.serve(async (req: Request) => {
   let rawText: string
   try {
     rawText = await req.text()
-    console.log("Raw body:", rawText.slice(0, 500))
     body = JSON.parse(rawText)
   } catch {
     return new Response("Invalid JSON", { status: 400 })

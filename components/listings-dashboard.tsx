@@ -24,9 +24,6 @@ export type Listing = {
   status: "new" | "read" | "reached_out"
 }
 
-type StatusFilter = "new" | "read" | "reached_out"
-type LeaseFilter = "all" | "long-term" | "sublet"
-
 const supabase = createClient()
 
 export function ListingsDashboard() {
@@ -34,16 +31,24 @@ export function ListingsDashboard() {
   const [loading, setLoading] = useState(true)
   const [scraping, setScraping] = useState(false)
   const [scrapeMsg, setScrapeMsg] = useState("")
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("new")
-  const [minScore, setMinScore] = useState(1)
-  const [maxPrice, setMaxPrice] = useState("")
-  const [leaseFilter, setLeaseFilter] = useState<LeaseFilter>("all")
   const [lightbox, setLightbox] = useState<{ urls: string[]; idx: number } | null>(null)
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightbox(null)
+      if (e.key === "ArrowLeft") setLightbox((p) => p ? { ...p, idx: (p.idx - 1 + p.urls.length) % p.urls.length } : null)
+      if (e.key === "ArrowRight") setLightbox((p) => p ? { ...p, idx: (p.idx + 1) % p.urls.length } : null)
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [])
 
   useEffect(() => {
     supabase
       .from("listings")
       .select("*")
+      .eq("lease_type", "long-term")
+      .lte("price_monthly", 2000)
       .order("ai_score", { ascending: false, nullsFirst: false })
       .then(({ data, error }) => {
         if (error) console.error("Supabase error:", error)
@@ -51,11 +56,6 @@ export function ListingsDashboard() {
         setLoading(false)
       })
   }, [])
-
-  const updateStatus = async (id: string, status: Listing["status"]) => {
-    setListings((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)))
-    await supabase.from("listings").update({ status }).eq("id", id)
-  }
 
   const triggerScrape = async () => {
     setScraping(true)
@@ -76,20 +76,13 @@ export function ListingsDashboard() {
     setScraping(false)
   }
 
-  const filtered = listings.filter((l) => {
-    if (l.status !== statusFilter) return false
-    if (l.ai_score !== null && l.ai_score < minScore) return false
-    if (maxPrice !== "" && l.price_monthly !== null && l.price_monthly > Number(maxPrice)) return false
-    if (leaseFilter !== "all" && l.lease_type !== leaseFilter) return false
-    return true
-  })
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold">SF Housing Finder</h1>
         <div className="flex items-center gap-3">
           {scrapeMsg && <span className="text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
+          <span className="text-xs text-muted-foreground">{listings.length} listings</span>
           <button
             onClick={triggerScrape}
             disabled={scraping}
@@ -101,77 +94,17 @@ export function ListingsDashboard() {
         </div>
       </header>
 
-      <div className="px-6 py-3 border-b flex flex-wrap gap-3 items-center bg-muted/30">
-        <div className="flex gap-1">
-          {(["new", "read", "reached_out"] as StatusFilter[]).map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                statusFilter === s
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background hover:bg-muted text-muted-foreground border"
-              }`}
-            >
-              {s === "reached_out" ? "Reached Out" : s.charAt(0).toUpperCase() + s.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground whitespace-nowrap">Min score: {minScore}</span>
-          <input
-            type="range"
-            min={1}
-            max={10}
-            value={minScore}
-            onChange={(e) => setMinScore(Number(e.target.value))}
-            className="w-24 accent-primary"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">Max $</span>
-          <input
-            type="number"
-            placeholder="No limit"
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(e.target.value)}
-            className="w-24 px-2 py-1 rounded-md border bg-background text-sm"
-          />
-        </div>
-
-        <div className="flex gap-1">
-          {(["all", "long-term", "sublet"] as LeaseFilter[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setLeaseFilter(t)}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                leaseFilter === t
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-background hover:bg-muted text-muted-foreground border"
-              }`}
-            >
-              {t === "all" ? "All types" : t}
-            </button>
-          ))}
-        </div>
-
-        <span className="text-xs text-muted-foreground ml-auto">{filtered.length} listings</span>
-      </div>
-
-      <main className="px-6 py-6">
+      <main className="px-6 py-4">
         {loading ? (
           <p className="text-center text-muted-foreground py-20">Loading...</p>
-        ) : filtered.length === 0 ? (
-          <p className="text-center text-muted-foreground py-20">No listings match your filters.</p>
+        ) : listings.length === 0 ? (
+          <p className="text-center text-muted-foreground py-20">No listings found.</p>
         ) : (
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((listing) => (
+          <div className="border rounded-lg overflow-hidden">
+            {listings.map((listing) => (
               <ListingCard
                 key={listing.id}
                 listing={listing}
-                onStatusChange={updateStatus}
                 onOpenLightbox={(urls, idx) => setLightbox({ urls, idx })}
               />
             ))}
