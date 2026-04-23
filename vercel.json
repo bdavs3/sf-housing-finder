@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/trigger-apify",
+      "schedule": "0 6,18 * * *"
+    }
+  ]
+}
