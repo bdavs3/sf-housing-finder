@@ -145,7 +145,6 @@ export function ListingsDashboard() {
         <h1 className="hidden md:block text-xl font-bold shrink-0">SF Housing Finder</h1>
         <Home className="block md:hidden w-5 h-5 shrink-0" />
         <div className="flex items-center gap-3 min-w-0">
-          {scrapeMsg && <span className="hidden md:block text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
           {scrapeStatus === "scraping" && (
             <span className="text-xs text-muted-foreground shrink-0 animate-pulse">scraping…</span>
           )}
@@ -157,6 +156,7 @@ export function ListingsDashboard() {
               scoring {scoringCount}…
             </span>
           )}
+          {scrapeMsg && <span className="hidden md:block text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
           <span className="text-xs text-muted-foreground shrink-0">{listings.length} listings</span>
           <button
             onClick={() => setFavoritesOnly((v) => !v)}
