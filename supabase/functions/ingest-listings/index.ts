@@ -70,8 +70,11 @@ Deno.serve(async (req: Request) => {
   )
 
   let body: unknown
+  let rawText: string
   try {
-    body = await req.json()
+    rawText = await req.text()
+    console.log("Raw body:", rawText.slice(0, 500))
+    body = JSON.parse(rawText)
   } catch {
     return new Response("Invalid JSON", { status: 400 })
   }
@@ -83,12 +86,12 @@ Deno.serve(async (req: Request) => {
     body &&
     typeof body === "object" &&
     !Array.isArray(body) &&
-    "eventData" in (body as object)
+    "resource" in (body as object)
   ) {
-    const datasetId = (body as { eventData: { defaultDatasetId?: string } }).eventData
+    const datasetId = (body as { resource: { defaultDatasetId?: string } }).resource
       ?.defaultDatasetId
     if (!datasetId) {
-      return new Response("No defaultDatasetId in webhook payload", { status: 400 })
+      return new Response("No defaultDatasetId in resource payload", { status: 400 })
     }
     posts = await fetchDatasetItems(datasetId)
   } else {
