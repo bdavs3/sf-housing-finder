@@ -102,11 +102,14 @@ Deno.serve(async (req: Request) => {
 
   const newIds = await ingestPosts(supabase, posts)
 
-  // Fire scoring in the background — waitUntil keeps them alive in production,
-  // but we return the response regardless so the webhook always gets a 200.
-  const scoringPromise = Promise.all(
-    newIds.map((id) => supabase.functions.invoke("score-listing", { body: { id } })),
-  )
+  // Fire scoring in the background, staggered 1.5s apart to stay under the
+  // 50 RPM Claude rate limit when ingesting large batches.
+  const scoringPromise = (async () => {
+    for (let i = 0; i < newIds.length; i++) {
+      if (i > 0) await new Promise((r) => setTimeout(r, 1500))
+      supabase.functions.invoke("score-listing", { body: { id: newIds[i] } })
+    }
+  })()
   try {
     EdgeRuntime.waitUntil(scoringPromise)
   } catch {
