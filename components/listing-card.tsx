@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { Listing } from "./listings-dashboard"
 import { ExternalLink, Mail, MailOpen, Star, X } from "lucide-react"
 
@@ -35,6 +35,13 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
   const images = listing.image_urls ?? []
   const isUnread = listing.status === "new"
   const [showModal, setShowModal] = useState(false)
+
+  useEffect(() => {
+    if (!showModal) return
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === "Escape") setShowModal(false) }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [showModal])
 
   return (
     <>
@@ -135,9 +142,11 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
             <div className="flex flex-wrap gap-1 mt-1.5">
               {listing.flags.map((flag) => {
                 const color =
-                  flag === "No pets" || flag === "Female only" || flag === "Male only" || flag === "No WFH" || flag === "Seeking housing"
+                  flag === "No pets" || flag === "Male only" || flag === "No WFH" || flag === "Seeking housing"
                     ? "bg-red-900/50 text-red-300 border-red-800"
-                    : flag === "Pets OK" || flag === "Cats OK" || flag === "WFH friendly"
+                    : flag === "Female only"
+                    ? "bg-orange-900/50 text-orange-300 border-orange-800"
+                    : flag === "Pets OK" || flag === "Cats OK" || flag === "WFH friendly" || flag === "Parking"
                     ? "bg-green-900/50 text-green-300 border-green-800"
                     : "bg-muted text-muted-foreground border-border"
                 return (
@@ -157,22 +166,45 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
           onClick={() => setShowModal(false)}
         >
           <div
-            className="bg-background rounded-t-2xl md:rounded-xl w-full md:max-w-lg p-6 max-h-[70vh] overflow-y-auto"
+            className="bg-background rounded-t-2xl md:rounded-xl w-full md:max-w-lg p-6 max-h-[75vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className={`text-sm ${isUnread ? "font-bold" : "font-semibold"}`}>
-                  {listing.author_name ?? "Unknown"}
-                  {listing.price_monthly && <span className="ml-2 font-medium">${listing.price_monthly.toLocaleString()}/mo</span>}
-                </p>
-                {listing.neighborhood && <p className="text-xs text-muted-foreground mt-0.5">{listing.neighborhood}</p>}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <ScoreInline score={listing.ai_score} />
+                  <p className="font-semibold text-sm">{listing.author_name ?? "Unknown"}</p>
+                  {listing.price_monthly && <span className="text-sm font-medium">${listing.price_monthly.toLocaleString()}/mo</span>}
+                </div>
+                <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground flex-wrap">
+                  {listing.neighborhood && <span>{listing.neighborhood}</span>}
+                  {listing.move_in_date && <span>· {listing.move_in_date}</span>}
+                </div>
               </div>
               <button onClick={() => setShowModal(false)} className="text-muted-foreground hover:text-foreground ml-4 shrink-0">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-sm leading-relaxed text-muted-foreground">{listing.ai_summary}</p>
+            <p className="text-sm leading-relaxed text-foreground mb-3">{listing.ai_summary}</p>
+            {listing.flags?.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {listing.flags.map((flag) => {
+                  const color =
+                    flag === "No pets" || flag === "Male only" || flag === "No WFH" || flag === "Seeking housing"
+                      ? "bg-red-900/50 text-red-300 border-red-800"
+                      : flag === "Female only"
+                      ? "bg-orange-900/50 text-orange-300 border-orange-800"
+                      : flag === "Pets OK" || flag === "Cats OK" || flag === "WFH friendly" || flag === "Parking"
+                      ? "bg-green-900/50 text-green-300 border-green-800"
+                      : "bg-muted text-muted-foreground border-border"
+                  return (
+                    <span key={flag} className={`text-[10px] px-1.5 py-0.5 rounded border ${color}`}>
+                      {flag}
+                    </span>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

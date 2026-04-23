@@ -25,30 +25,41 @@ Deno.serve(async (req: Request) => {
   const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") })
 
   const imageUrls: string[] = listing.image_urls ?? []
+  console.log(`[score-listing] id=${id} images=${imageUrls.length}`)
+
   const imageBlocks: unknown[] = await Promise.all(
     imageUrls.slice(0, 4).map(async (url) => {
       try {
         const res = await fetch(url)
-        if (!res.ok) return null
+        if (!res.ok) {
+          console.log(`[score-listing] image fetch failed: ${res.status} ${url.slice(0, 80)}`)
+          return null
+        }
         const buf = await res.arrayBuffer()
         const bytes = new Uint8Array(buf)
         let binary = ""
         for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
         const data = btoa(binary)
         const media_type = (res.headers.get("content-type") ?? "image/jpeg").split(";")[0]
+        console.log(`[score-listing] image ok: ${media_type} ${Math.round(buf.byteLength / 1024)}kb`)
         return { type: "image", source: { type: "base64", media_type, data } }
-      } catch {
+      } catch (err) {
+        console.log(`[score-listing] image error: ${err}`)
         return null
       }
     }),
   ).then((blocks) => blocks.filter(Boolean))
+
+  console.log(`[score-listing] sending to claude: ${imageBlocks.length} images`)
 
   const textBlock = {
     type: "text",
     text: `Post text:\n${listing.raw_text ?? "(none)"}\n\nOCR text from images:\n${listing.ocr_text ?? "(none)"}`,
   }
 
-  const response = await anthropic.messages.create({
+  let response
+  try {
+    response = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 1024,
     system: [
@@ -60,18 +71,29 @@ Deno.serve(async (req: Request) => {
       },
     ],
     messages: [{ role: "user", content: [...imageBlocks, textBlock] }],
-  })
+    })
+  } catch (err) {
+    console.log(`[score-listing] anthropic error: ${err}`)
+    return new Response(`Anthropic error: ${err}`, { status: 500 })
+  }
+
+  console.log(`[score-listing] claude stop_reason=${response.stop_reason} usage=${JSON.stringify(response.usage)}`)
 
   const text = response.content[0].type === "text" ? response.content[0].text : ""
+  console.log(`[score-listing] raw response: ${text.slice(0, 300)}`)
+
   const jsonMatch = text.match(/\{[\s\S]*\}/)
   if (!jsonMatch) {
+    console.log(`[score-listing] no json found in response`)
     return new Response("Invalid AI response", { status: 500 })
   }
 
   let result: Record<string, unknown>
   try {
     result = JSON.parse(jsonMatch[0])
-  } catch {
+    console.log(`[score-listing] parsed ok: score=${result.ai_score} flags=${JSON.stringify(result.flags)}`)
+  } catch (err) {
+    console.log(`[score-listing] json parse error: ${err}`)
     return new Response("Failed to parse AI response", { status: 500 })
   }
 
