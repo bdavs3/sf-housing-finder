@@ -108,11 +108,17 @@ Deno.serve(async (req: Request) => {
 
   const newIds = await ingestPosts(supabase, posts)
 
-  // Fire all scoring jobs in parallel — score-listing handles its own
-  // retry-on-429 so we don't need to stagger here. Ingest returns quickly
-  // and status flips to idle so the scoring counter takes over.
-  for (const id of newIds) {
-    supabase.functions.invoke("score-listing", { body: { id } })
+  // Self-chaining pattern: split IDs into N buckets and fire N parallel
+  // workers. Each score-listing call processes its id, then invokes the next
+  // one in its queue. Keeps concurrency bounded below Supabase's edge function
+  // limits while still parallelizing ~5x over single-threaded.
+  const workers = 5
+  const buckets: string[][] = Array.from({ length: workers }, () => [])
+  newIds.forEach((id, i) => buckets[i % workers].push(id))
+  for (const bucket of buckets) {
+    if (bucket.length === 0) continue
+    const [first, ...rest] = bucket
+    supabase.functions.invoke("score-listing", { body: { id: first, queue: rest } })
   }
 
   await supabase.from("scrape_status").update({ status: "idle", post_count: null }).eq("id", 1)

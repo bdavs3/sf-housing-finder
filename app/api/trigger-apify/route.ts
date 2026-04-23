@@ -26,7 +26,7 @@ export async function POST() {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startUrls, resultsLimit, onlyPostsNewerThan: "25 hours" }),
+        body: JSON.stringify({ startUrls, resultsLimit, onlyPostsNewerThan: process.env.APIFY_ONLY_POSTS_NEWER_THAN || null }),
       },
     )
 

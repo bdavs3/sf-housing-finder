@@ -4,12 +4,21 @@ import { createClient } from "jsr:@supabase/supabase-js@2"
 const SYSTEM_PROMPT = "<Redacted>"
 
 Deno.serve(async (req: Request) => {
-  const { id } = await req.json()
+  const { id, queue } = await req.json() as { id: string; queue?: string[] }
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   )
+
+  const chainNext = () => {
+    if (queue && queue.length > 0) {
+      const [next, ...rest] = queue
+      supabase.functions.invoke("score-listing", { body: { id: next, queue: rest } })
+    }
+  }
+
+  const scoreOne = async (): Promise<Response> => {
 
   const { data: listing } = await supabase
     .from("listings")
@@ -135,4 +144,11 @@ Deno.serve(async (req: Request) => {
   return new Response(JSON.stringify(result), {
     headers: { "Content-Type": "application/json" },
   })
+  }
+
+  try {
+    return await scoreOne()
+  } finally {
+    chainNext()
+  }
 })
