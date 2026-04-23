@@ -14,7 +14,9 @@ Deno.serve(async (req: Request) => {
   const chainNext = () => {
     if (queue && queue.length > 0) {
       const [next, ...rest] = queue
-      supabase.functions.invoke("score-listing", { body: { id: next, queue: rest } })
+      EdgeRuntime.waitUntil(
+        supabase.functions.invoke("score-listing", { body: { id: next, queue: rest } })
+      )
     }
   }
 

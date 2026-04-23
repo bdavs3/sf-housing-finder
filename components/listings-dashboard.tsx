@@ -53,7 +53,7 @@ export function ListingsDashboard() {
     supabase
       .from("listings")
       .select("*")
-      .eq("lease_type", "long-term")
+      .in("lease_type", ["long-term", "unknown"])
       .lte("price_monthly", 2000)
       .order("posted_at", { ascending: false, nullsFirst: false })
       .then(({ data, error }) => {
@@ -93,7 +93,7 @@ export function ListingsDashboard() {
           pendingIds.delete(updated.id)
           setScoringCount(pendingIds.size)
         }
-        if (updated.lease_type === "long-term" && (updated.price_monthly ?? Infinity) <= 2000) {
+        if ((updated.lease_type === "long-term" || updated.lease_type === "unknown") && (updated.price_monthly ?? Infinity) <= 2000) {
           setListings((prev) => {
             const idx = prev.findIndex((l) => l.id === updated.id)
             if (idx >= 0) {
