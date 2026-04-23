@@ -108,20 +108,14 @@ Deno.serve(async (req: Request) => {
 
   const newIds = await ingestPosts(supabase, posts)
 
-  // Fire scoring in the background, staggered 7s apart to stay under the
-  // 30,000 TPM Claude rate limit (~3,080 tokens/request = ~8/min max).
-  const scoringPromise = (async () => {
-    for (let i = 0; i < newIds.length; i++) {
-      if (i > 0) await new Promise((r) => setTimeout(r, 7000))
-      supabase.functions.invoke("score-listing", { body: { id: newIds[i] } })
-    }
-    await supabase.from("scrape_status").update({ status: "idle", post_count: null }).eq("id", 1)
-  })()
-  try {
-    EdgeRuntime.waitUntil(scoringPromise)
-  } catch {
-    // Local runtime may not support waitUntil; scoring fires and response returns
+  // Fire all scoring jobs in parallel — score-listing handles its own
+  // retry-on-429 so we don't need to stagger here. Ingest returns quickly
+  // and status flips to idle so the scoring counter takes over.
+  for (const id of newIds) {
+    supabase.functions.invoke("score-listing", { body: { id } })
   }
+
+  await supabase.from("scrape_status").update({ status: "idle", post_count: null }).eq("id", 1)
 
   return new Response(JSON.stringify({ ingested: newIds.length }), {
     headers: { "Content-Type": "application/json" },
