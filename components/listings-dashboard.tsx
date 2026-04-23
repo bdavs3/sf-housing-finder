@@ -22,6 +22,7 @@ export type Listing = {
   ai_score: number | null
   ai_summary: string | null
   move_in_date: string | null
+  flags: string[]
   status: "new" | "read" | "reached_out"
   favorited: boolean
 }

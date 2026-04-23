@@ -12,9 +12,10 @@ create table listings (
   price_monthly int,
   neighborhood text,
   lease_type text check (lease_type in ('long-term', 'sublet', 'unknown')),
-  ai_score int check (ai_score between 1 and 10),
+  ai_score numeric(3,1) check (ai_score between 1.0 and 10.0),
   ai_summary text,
   move_in_date text,
   status text default 'new' check (status in ('new', 'read', 'reached_out')),
-  favorited boolean not null default false
+  favorited boolean not null default false,
+  flags text[] not null default '{}'
 );

@@ -126,10 +126,27 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
               onClick={() => setShowModal(true)}
             >
               <span className="md:hidden">
-                {listing.ai_summary.length > 100 ? listing.ai_summary.slice(0, 100) + "…" : listing.ai_summary}
+                {listing.ai_summary.length > 100 ? listing.ai_summary.slice(0, 50) + "…" : listing.ai_summary}
               </span>
               <span className="hidden md:inline">{listing.ai_summary}</span>
             </p>
+          )}
+          {listing.flags?.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {listing.flags.map((flag) => {
+                const color =
+                  flag === "No pets" || flag === "Female only" || flag === "Male only" || flag === "No WFH" || flag === "Seeking housing"
+                    ? "bg-red-900/50 text-red-300 border-red-800"
+                    : flag === "Pets OK" || flag === "Cats OK" || flag === "WFH friendly"
+                    ? "bg-green-900/50 text-green-300 border-green-800"
+                    : "bg-muted text-muted-foreground border-border"
+                return (
+                  <span key={flag} className={`text-[10px] px-1.5 py-0.5 rounded border ${color}`}>
+                    {flag}
+                  </span>
+                )
+              })}
+            </div>
           )}
         </div>
       </div>
