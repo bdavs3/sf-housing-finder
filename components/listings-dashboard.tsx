@@ -36,6 +36,7 @@ export function ListingsDashboard() {
   const [scrapeMsg, setScrapeMsg] = useState("")
   const [lightbox, setLightbox] = useState<{ urls: string[]; idx: number } | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [scoringCount, setScoringCount] = useState(0)
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -59,6 +60,38 @@ export function ListingsDashboard() {
         setListings((data as Listing[]) ?? [])
         setLoading(false)
       })
+  }, [])
+
+  useEffect(() => {
+    const pendingIds = new Set<string>()
+
+    const channel = supabase
+      .channel("listings-realtime")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "listings" }, (payload) => {
+        pendingIds.add(payload.new.id)
+        setScoringCount(pendingIds.size)
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "listings" }, (payload) => {
+        const updated = payload.new as Listing
+        if (pendingIds.has(updated.id)) {
+          pendingIds.delete(updated.id)
+          setScoringCount(pendingIds.size)
+        }
+        if (updated.lease_type === "long-term" && (updated.price_monthly ?? Infinity) <= 2000) {
+          setListings((prev) => {
+            const idx = prev.findIndex((l) => l.id === updated.id)
+            if (idx >= 0) {
+              const next = [...prev]
+              next[idx] = updated
+              return next
+            }
+            return [updated, ...prev]
+          })
+        }
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
   }, [])
 
   const updateStatus = async (id: string, status: Listing["status"]) => {
@@ -97,6 +130,11 @@ export function ListingsDashboard() {
         <Home className="block md:hidden w-5 h-5 shrink-0" />
         <div className="flex items-center gap-3 min-w-0">
           {scrapeMsg && <span className="hidden md:block text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
+          {scoringCount > 0 && (
+            <span className="text-xs text-muted-foreground shrink-0 animate-pulse">
+              scoring {scoringCount}…
+            </span>
+          )}
           <span className="text-xs text-muted-foreground shrink-0">{listings.length} listings</span>
           <button
             onClick={() => setFavoritesOnly((v) => !v)}
