@@ -18,16 +18,14 @@ export async function POST() {
         : `https://www.facebook.com/groups/${g.trim()}`,
     }))
 
-    const resultsLimit = process.env.APIFY_RESULTS_LIMIT
-      ? parseInt(process.env.APIFY_RESULTS_LIMIT, 10)
-      : 50
+    const resultsLimit = 500;
 
     const res = await fetch(
       `https://api.apify.com/v2/acts/apify~facebook-groups-scraper/runs?token=${token}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startUrls, resultsLimit }),
+        body: JSON.stringify({ startUrls, resultsLimit, onlyPostsNewerThan: "13 hours" }),
       },
     )
 
