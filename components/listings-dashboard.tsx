@@ -45,7 +45,8 @@ export function ListingsDashboard() {
       .from("listings")
       .select("*")
       .order("ai_score", { ascending: false, nullsFirst: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error("Supabase error:", error)
         setListings((data as Listing[]) ?? [])
         setLoading(false)
       })
