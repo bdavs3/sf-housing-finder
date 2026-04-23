@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import type { Listing } from "./listings-dashboard"
-import { ExternalLink, Mail, MailOpen, Star, X } from "lucide-react"
+import { CameraOff, ExternalLink, Mail, MailOpen, Star, X } from "lucide-react"
 
 function ScoreInline({ score }: { score: number | null }) {
   if (score === null)
@@ -55,7 +55,9 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
             <img src={images[0]} alt="" className="w-full h-full object-cover" />
           </button>
         ) : (
-          <div className="shrink-0 w-8 md:w-10" />
+          <div className="shrink-0 w-24 h-24 md:w-28 md:h-28 m-3 rounded bg-black flex items-center justify-center">
+            <CameraOff className="w-6 h-6 text-white/30" />
+          </div>
         )}
 
         <div className="flex-1 min-w-0 py-3 px-3 md:py-4 md:px-4">
