@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { ListingCard } from "./listing-card"
-import { RefreshCw, Star } from "lucide-react"
+import { Home, RefreshCw, Star } from "lucide-react"
 
 export type Listing = {
   id: string
@@ -90,14 +90,15 @@ export function ListingsDashboard() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold">SF Housing Finder</h1>
-        <div className="flex items-center gap-3">
-          {scrapeMsg && <span className="text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
-          <span className="text-xs text-muted-foreground">{listings.length} listings</span>
+      <header className="border-b px-4 md:px-6 py-4 flex items-center justify-between gap-3">
+        <h1 className="hidden md:block text-xl font-bold shrink-0">SF Housing Finder</h1>
+        <Home className="block md:hidden w-5 h-5 shrink-0" />
+        <div className="flex items-center gap-3 min-w-0">
+          {scrapeMsg && <span className="hidden md:block text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
+          <span className="text-xs text-muted-foreground shrink-0">{listings.length} listings</span>
           <button
             onClick={() => setFavoritesOnly((v) => !v)}
-            className={`transition-colors ${favoritesOnly ? "text-yellow-400" : "text-muted-foreground hover:text-foreground"}`}
+            className={`shrink-0 transition-colors ${favoritesOnly ? "text-yellow-400" : "text-muted-foreground hover:text-foreground"}`}
             title={favoritesOnly ? "Show all" : "Show favorites"}
           >
             <Star className={`w-4 h-4 ${favoritesOnly ? "fill-yellow-400" : ""}`} />
@@ -105,10 +106,10 @@ export function ListingsDashboard() {
           <button
             onClick={triggerScrape}
             disabled={scraping}
-            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
+            className="shrink-0 flex items-center gap-2 bg-primary text-primary-foreground px-3 md:px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
           >
             <RefreshCw className={`w-4 h-4 ${scraping ? "animate-spin" : ""}`} />
-            Scrape Now
+            <span className="hidden md:inline">Scrape Now</span>
           </button>
         </div>
       </header>
