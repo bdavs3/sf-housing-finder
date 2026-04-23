@@ -21,6 +21,7 @@ export type Listing = {
   lease_type: "long-term" | "sublet" | "unknown" | null
   ai_score: number | null
   ai_summary: string | null
+  move_in_date: string | null
   status: "new" | "read" | "reached_out"
   favorited: boolean
 }
@@ -51,7 +52,7 @@ export function ListingsDashboard() {
       .select("*")
       .eq("lease_type", "long-term")
       .lte("price_monthly", 2000)
-      .order("ai_score", { ascending: false, nullsFirst: false })
+      .order("posted_at", { ascending: false, nullsFirst: false })
       .then(({ data, error }) => {
         if (error) console.error("Supabase error:", error)
         setListings((data as Listing[]) ?? [])

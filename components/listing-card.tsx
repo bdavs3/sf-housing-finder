@@ -38,11 +38,11 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
 
   return (
     <>
-      <div className="flex items-stretch border-b hover:bg-muted/10 transition-colors">
+      <div className="flex items-center border-b hover:bg-muted/10 transition-colors">
         {images.length > 0 ? (
           <button
             onClick={() => onOpenLightbox(images, 0)}
-            className="shrink-0 w-28 md:w-36 self-stretch overflow-hidden hover:opacity-80 transition-opacity"
+            className="shrink-0 w-24 h-24 md:w-28 md:h-28 m-3 rounded overflow-hidden hover:opacity-80 transition-opacity"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={images[0]} alt="" className="w-full h-full object-cover" />
@@ -55,7 +55,7 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
           {/* Row 1: score + author name + (desktop: price, neighborhood, date, icons) */}
           <div className="flex items-center gap-1.5 mb-0.5 overflow-hidden">
             <ScoreInline score={listing.ai_score} />
-            <span className="text-sm truncate font-semibold">
+            <span className={`text-sm truncate font-semibold ${isUnread ? "text-blue-400" : "text-foreground"}`}>
               {listing.author_name ?? "Unknown"}
             </span>
             {listing.price_monthly && (
@@ -65,6 +65,9 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
             )}
             {listing.neighborhood && (
               <span className="hidden md:inline text-sm text-muted-foreground shrink-0">· {listing.neighborhood}</span>
+            )}
+            {listing.move_in_date && (
+              <span className="hidden md:inline text-sm text-muted-foreground shrink-0">· {listing.move_in_date}</span>
             )}
             <span className="hidden md:inline ml-auto text-xs text-muted-foreground whitespace-nowrap shrink-0">
               {formatDateTime(listing.posted_at)}
@@ -83,12 +86,15 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
             </button>
           </div>
 
-          {/* Row 2 (mobile only): price + icons */}
+          {/* Row 2 (mobile only): price + move_in_date + icons */}
           <div className="flex md:hidden items-center gap-1.5 mb-1">
             {listing.price_monthly && (
               <span className="text-sm shrink-0 text-foreground font-medium">
                 ${listing.price_monthly.toLocaleString()}/mo
               </span>
+            )}
+            {listing.move_in_date && (
+              <span className="text-xs shrink-0 text-muted-foreground">· {listing.move_in_date}</span>
             )}
             <div className="ml-auto" />
             {listing.post_url && (
@@ -116,7 +122,7 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
 
           {listing.ai_summary && (
             <p
-              className={`text-sm leading-relaxed text-foreground cursor-pointer md:cursor-default ${isUnread ? "font-semibold" : "font-normal"}`}
+              className="text-sm leading-relaxed text-foreground cursor-pointer md:cursor-default"
               onClick={() => setShowModal(true)}
             >
               <span className="md:hidden">

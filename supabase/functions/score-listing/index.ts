@@ -81,6 +81,7 @@ Deno.serve(async (req: Request) => {
       price_monthly: (result.price_monthly as number) ?? null,
       neighborhood: (result.neighborhood as string) ?? null,
       lease_type: (result.lease_type as string) ?? "unknown",
+      move_in_date: (result.move_in_date as string) ?? null,
       ai_score: (result.ai_score as number) ?? null,
       ai_summary: (result.ai_summary as string) ?? null,
     })

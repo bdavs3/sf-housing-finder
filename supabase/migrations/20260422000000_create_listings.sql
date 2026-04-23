@@ -14,5 +14,7 @@ create table listings (
   lease_type text check (lease_type in ('long-term', 'sublet', 'unknown')),
   ai_score int check (ai_score between 1 and 10),
   ai_summary text,
-  status text default 'new' check (status in ('new', 'read', 'reached_out'))
+  move_in_date text,
+  status text default 'new' check (status in ('new', 'read', 'reached_out')),
+  favorited boolean not null default false
 );
