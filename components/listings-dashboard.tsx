@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { ListingCard } from "./listing-card"
-import { Home, RefreshCw, Star } from "lucide-react"
+import { Home, RefreshCw, Star, Wand2 } from "lucide-react"
 
 export type Listing = {
   id: string
@@ -34,6 +34,7 @@ export function ListingsDashboard() {
   const [loading, setLoading] = useState(true)
   const [scraping, setScraping] = useState(false)
   const [scrapeMsg, setScrapeMsg] = useState("")
+  const [rescoring, setRescoring] = useState(false)
   const [lightbox, setLightbox] = useState<{ urls: string[]; idx: number } | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [scoringCount, setScoringCount] = useState(0)
@@ -120,6 +121,16 @@ export function ListingsDashboard() {
     await supabase.from("listings").update({ favorited }).eq("id", id)
   }
 
+  const triggerRescore = async () => {
+    setRescoring(true)
+    try {
+      await fetch("/api/rescore", { method: "POST" })
+    } catch (err) {
+      console.error("Rescore failed:", err)
+    }
+    setRescoring(false)
+  }
+
   const triggerScrape = async () => {
     setScraping(true)
     setScrapeMsg("")
@@ -146,14 +157,14 @@ export function ListingsDashboard() {
         <Home className="block md:hidden w-5 h-5 shrink-0" />
         <div className="flex items-center gap-3 min-w-0">
           {scrapeStatus === "scraping" && (
-            <span className="text-xs text-muted-foreground shrink-0 animate-pulse">scraping…</span>
+            <span className="text-xs text-muted-foreground shrink-0 animate-pulse">scraping...</span>
           )}
           {scrapeStatus === "ingesting" && (
-            <span className="text-xs text-muted-foreground shrink-0 animate-pulse">ingesting…</span>
+            <span className="text-xs text-muted-foreground shrink-0 animate-pulse">ingesting...</span>
           )}
           {scrapeStatus === "idle" && scoringCount > 0 && (
             <span className="text-xs text-muted-foreground shrink-0 animate-pulse">
-              scoring {scoringCount}…
+              scoring {scoringCount}...
             </span>
           )}
           {scrapeMsg && <span className="hidden md:block text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
@@ -164,6 +175,15 @@ export function ListingsDashboard() {
             title={favoritesOnly ? "Show all" : "Show favorites"}
           >
             <Star className={`w-4 h-4 ${favoritesOnly ? "fill-yellow-400" : ""}`} />
+          </button>
+          <button
+            onClick={triggerRescore}
+            disabled={rescoring}
+            className="shrink-0 flex items-center gap-2 bg-secondary text-secondary-foreground px-3 md:px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-secondary/80 transition-colors"
+            title="Re-score unscored listings"
+          >
+            <Wand2 className={`w-4 h-4 ${rescoring ? "animate-pulse" : ""}`} />
+            <span className="hidden md:inline">Re-score</span>
           </button>
           <button
             onClick={triggerScrape}
