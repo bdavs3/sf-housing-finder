@@ -53,6 +53,7 @@ export function ListingsDashboard() {
       .select("*")
       .in("lease_type", ["long-term", "unknown"])
       .lte("price_monthly", 2000)
+      .not("flags", "cs", '["Seeking housing"]')
       .order("posted_at", { ascending: false, nullsFirst: false })
       .then(({ data, error }) => {
         if (error) console.error("Supabase error:", error)
@@ -81,7 +82,7 @@ export function ListingsDashboard() {
       .channel("listings-realtime")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "listings" }, (payload) => {
         const updated = payload.new as Listing
-        if ((updated.lease_type === "long-term" || updated.lease_type === "unknown") && (updated.price_monthly ?? Infinity) <= 2000) {
+        if ((updated.lease_type === "long-term" || updated.lease_type === "unknown") && (updated.price_monthly ?? Infinity) <= 2000 && !updated.flags?.includes("Seeking housing")) {
           setListings((prev) => {
             const idx = prev.findIndex((l) => l.id === updated.id)
             if (idx >= 0) {
