@@ -7,7 +7,11 @@ select cron.schedule(
       url := 'https://sf-housing-finder.vercel.app/api/trigger-apify',
       headers := json_build_object(
         'Content-Type', 'application/json',
-        'x-vercel-protection-bypass', (select decrypted_secret from vault.decrypted_secrets where name = 'VERCEL_AUTOMATION_BYPASS_SECRET')
+        'Authorization', 'Basic ' || encode(convert_to(
+          (select decrypted_secret from vault.decrypted_secrets where name = 'SITE_USER') || ':' ||
+          (select decrypted_secret from vault.decrypted_secrets where name = 'SITE_PASS'),
+          'utf8'
+        ), 'base64')
       )::jsonb,
       body := '{}'::jsonb
     )
@@ -23,7 +27,11 @@ select cron.schedule(
       url := 'https://sf-housing-finder.vercel.app/api/score',
       headers := json_build_object(
         'Content-Type', 'application/json',
-        'x-vercel-protection-bypass', (select decrypted_secret from vault.decrypted_secrets where name = 'VERCEL_AUTOMATION_BYPASS_SECRET')
+        'Authorization', 'Basic ' || encode(convert_to(
+          (select decrypted_secret from vault.decrypted_secrets where name = 'SITE_USER') || ':' ||
+          (select decrypted_secret from vault.decrypted_secrets where name = 'SITE_PASS'),
+          'utf8'
+        ), 'base64')
       )::jsonb,
       body := '{}'::jsonb
     )
