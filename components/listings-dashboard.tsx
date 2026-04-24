@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { ListingCard } from "./listing-card"
-import { Home, RefreshCw, Star, Wand2 } from "lucide-react"
+import { Home, RefreshCw, Star, TrendingUp, Wand2 } from "lucide-react"
 
 export type Listing = {
   id: string
@@ -26,6 +26,20 @@ export type Listing = {
   favorited: boolean
 }
 
+function trigramSim(a: string, b: string): number {
+  if (!a || !b) return 0
+  const tgrams = (s: string) => {
+    const set = new Set<string>()
+    const p = `  ${s.toLowerCase()}  `
+    for (let i = 0; i < p.length - 2; i++) set.add(p.slice(i, i + 3))
+    return set
+  }
+  const ta = tgrams(a), tb = tgrams(b)
+  let common = 0
+  for (const t of ta) if (tb.has(t)) common++
+  return (2 * common) / (ta.size + tb.size)
+}
+
 const supabase = createClient()
 
 export function ListingsDashboard() {
@@ -35,6 +49,7 @@ export function ListingsDashboard() {
   const [scrapeMsg, setScrapeMsg] = useState("")
   const [lightbox, setLightbox] = useState<{ urls: string[]; idx: number } | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [sortBy, setSortBy] = useState<"recent" | "score">("recent")
   const [scrapeStatus, setScrapeStatus] = useState<"idle" | "scraping">("idle")
 
   useEffect(() => {
@@ -57,14 +72,17 @@ export function ListingsDashboard() {
       .order("posted_at", { ascending: false, nullsFirst: false })
       .then(({ data, error }) => {
         if (error) console.error("Supabase error:", error)
-        const seen = new Set<string>()
-        const deduped = ((data as Listing[]) ?? []).filter((l) => {
-          const key = `${l.author_name}||${l.raw_text}`
-          if (seen.has(key)) return false
-          seen.add(key)
-          return true
-        })
-        setListings(deduped)
+        const kept: Listing[] = []
+        for (const listing of (data as Listing[]) ?? []) {
+          const isDupe = kept.some((k) => {
+            if (k.author_name !== listing.author_name) return false
+            const daysDiff = Math.abs(new Date(k.posted_at ?? 0).getTime() - new Date(listing.posted_at ?? 0).getTime()) / 86400000
+            if (daysDiff > 7) return false
+            return trigramSim(k.raw_text ?? "", listing.raw_text ?? "") >= 0.8
+          })
+          if (!isDupe) kept.push(listing)
+        }
+        setListings(kept)
         setLoading(false)
       })
   }, [])
@@ -146,6 +164,13 @@ export function ListingsDashboard() {
           {scrapeMsg && <span className="hidden md:block text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
           <span className="text-xs text-muted-foreground shrink-0">{listings.length} listings</span>
           <button
+            onClick={() => setSortBy((v) => v === "recent" ? "score" : "recent")}
+            className={`shrink-0 transition-colors ${sortBy === "score" ? "text-blue-400" : "text-muted-foreground hover:text-foreground"}`}
+            title={sortBy === "score" ? "Sort by most recent" : "Sort by best score"}
+          >
+            <TrendingUp className="w-4 h-4" />
+          </button>
+          <button
             onClick={() => setFavoritesOnly((v) => !v)}
             className={`shrink-0 transition-colors ${favoritesOnly ? "text-yellow-400" : "text-muted-foreground hover:text-foreground"}`}
             title={favoritesOnly ? "Show all" : "Show favorites"}
@@ -176,7 +201,10 @@ export function ListingsDashboard() {
           <p className="text-center text-muted-foreground py-20">Loading...</p>
         ) : (
           (() => {
-            const visible = favoritesOnly ? listings.filter((l) => l.favorited) : listings
+            const filtered = favoritesOnly ? listings.filter((l) => l.favorited) : listings
+            const visible = sortBy === "score"
+              ? [...filtered].sort((a, b) => (b.ai_score ?? -1) - (a.ai_score ?? -1))
+              : filtered
             return visible.length === 0 ? (
               <p className="text-center text-muted-foreground py-20">No listings found.</p>
             ) : (

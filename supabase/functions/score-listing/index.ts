@@ -3,6 +3,20 @@ import { createClient } from "jsr:@supabase/supabase-js@2"
 
 const SYSTEM_PROMPT = "<Redacted>"
 
+function trigramSim(a: string, b: string): number {
+  if (!a || !b) return 0
+  const tgrams = (s: string) => {
+    const set = new Set<string>()
+    const p = `  ${s.toLowerCase()}  `
+    for (let i = 0; i < p.length - 2; i++) set.add(p.slice(i, i + 3))
+    return set
+  }
+  const ta = tgrams(a), tb = tgrams(b)
+  let common = 0
+  for (const t of ta) if (tb.has(t)) common++
+  return (2 * common) / (ta.size + tb.size)
+}
+
 Deno.serve(async (req: Request) => {
   const { id } = await req.json() as { id: string }
 
@@ -13,7 +27,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: listing } = await supabase
     .from("listings")
-    .select("raw_text, ocr_text, image_urls, author_name")
+    .select("raw_text, ocr_text, image_urls, author_name, posted_at")
     .eq("id", id)
     .single()
 
@@ -21,15 +35,16 @@ Deno.serve(async (req: Request) => {
     return new Response("Not found", { status: 404 })
   }
 
-  const { data: duplicate } = await supabase
+  const weekAgo = new Date((listing.posted_at ? new Date(listing.posted_at) : new Date()).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const { data: candidates } = await supabase
     .from("listings")
-    .select("price_monthly, neighborhood, lease_type, move_in_date, ai_score, ai_summary, flags")
-    .eq("raw_text", listing.raw_text)
+    .select("price_monthly, neighborhood, lease_type, move_in_date, ai_score, ai_summary, flags, raw_text")
     .eq("author_name", listing.author_name)
     .not("ai_score", "is", null)
     .neq("id", id)
-    .limit(1)
-    .single()
+    .gte("posted_at", weekAgo)
+
+  const duplicate = candidates?.find((c) => trigramSim(c.raw_text ?? "", listing.raw_text ?? "") >= 0.8)
 
   if (duplicate) {
     console.log(`[score-listing] duplicate found, copying score for id=${id}`)
