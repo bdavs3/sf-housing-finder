@@ -4,23 +4,12 @@ import { createClient } from "jsr:@supabase/supabase-js@2"
 const SYSTEM_PROMPT = "<Redacted>"
 
 Deno.serve(async (req: Request) => {
-  const { id, queue } = await req.json() as { id: string; queue?: string[] }
+  const { id } = await req.json() as { id: string }
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   )
-
-  const chainNext = () => {
-    if (queue && queue.length > 0) {
-      const [next, ...rest] = queue
-      EdgeRuntime.waitUntil(
-        supabase.functions.invoke("score-listing", { body: { id: next, queue: rest } })
-      )
-    }
-  }
-
-  const scoreOne = async (): Promise<Response> => {
 
   const { data: listing } = await supabase
     .from("listings")
@@ -65,50 +54,28 @@ Deno.serve(async (req: Request) => {
     text: `Post text:\n${listing.raw_text ?? "(none)"}\n\nOCR text from images:\n${listing.ocr_text ?? "(none)"}`,
   }
 
-  let response: Record<string, unknown> | null = null
-  const maxAttempts = 6
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 1024,
-          system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-          messages: [{ role: "user", content: [...imageBlocks, textBlock] }],
-        }),
-      })
-      if (res.status === 429 || res.status === 529) {
-        const retryAfter = Number(res.headers.get("retry-after"))
-        const waitSec = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : Math.min(30, 2 ** attempt)
-        console.log(`[score-listing] ${res.status} on attempt ${attempt}/${maxAttempts}, waiting ${waitSec}s`)
-        if (attempt === maxAttempts) {
-          return new Response(`Rate limited after ${maxAttempts} attempts`, { status: 500 })
-        }
-        await new Promise((r) => setTimeout(r, waitSec * 1000))
-        continue
-      }
-      if (!res.ok) {
-        const body = await res.text()
-        console.log(`[score-listing] anthropic error: ${res.status} ${body}`)
-        return new Response(`Anthropic error: ${res.status} ${body}`, { status: 500 })
-      }
-      response = await res.json()
-      break
-    } catch (err) {
-      console.log(`[score-listing] anthropic error: ${err}`)
-      return new Response(`Anthropic error: ${err}`, { status: 500 })
-    }
-  }
-  if (!response) {
-    return new Response("Scoring failed", { status: 500 })
+  const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": Deno.env.get("ANTHROPIC_API_KEY")!,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1024,
+      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      messages: [{ role: "user", content: [...imageBlocks, textBlock] }],
+    }),
+  })
+
+  if (!claudeRes.ok) {
+    const body = await claudeRes.text()
+    console.log(`[score-listing] anthropic error: ${claudeRes.status} ${body}`)
+    return new Response(`Anthropic error: ${claudeRes.status} ${body}`, { status: 500 })
   }
 
+  const response = await claudeRes.json()
   console.log(`[score-listing] claude stop_reason=${response.stop_reason} usage=${JSON.stringify(response.usage)}`)
 
   const content = response.content as Array<{ type: string; text: string }>
@@ -146,11 +113,4 @@ Deno.serve(async (req: Request) => {
   return new Response(JSON.stringify(result), {
     headers: { "Content-Type": "application/json" },
   })
-  }
-
-  try {
-    return await scoreOne()
-  } finally {
-    chainNext()
-  }
 })
