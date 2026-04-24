@@ -124,7 +124,7 @@ export function ListingsDashboard() {
   const triggerRescore = async () => {
     setRescoring(true)
     try {
-      await fetch("/api/rescore", { method: "POST" })
+      await fetch("/api/score", { method: "POST" })
     } catch (err) {
       console.error("Rescore failed:", err)
     }
