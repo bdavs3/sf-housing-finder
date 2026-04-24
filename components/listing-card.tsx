@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import type { Listing } from "./listings-dashboard"
-import { CameraOff, ExternalLink, Mail, MailOpen, Star, X } from "lucide-react"
+import { CameraOff, ExternalLink, Star, X } from "lucide-react"
 
 function ScoreInline({ score }: { score: number | null }) {
   if (score === null)
@@ -26,14 +26,12 @@ function formatDateTime(dateStr: string | null) {
 
 interface Props {
   listing: Listing
-  onStatusChange: (id: string, status: Listing["status"]) => void
   onToggleFavorited: (id: string, favorited: boolean) => void
   onOpenLightbox: (urls: string[], idx: number) => void
 }
 
-export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpenLightbox }: Props) {
+export function ListingCard({ listing, onToggleFavorited, onOpenLightbox }: Props) {
   const images = listing.image_urls ?? []
-  const isUnread = listing.status === "new"
   const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
@@ -64,7 +62,7 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
           {/* Row 1: score + author name + (desktop: price, neighborhood, date, icons) */}
           <div className="flex items-center gap-1.5 mb-0.5 overflow-hidden">
             <ScoreInline score={listing.ai_score} />
-            <span className={`text-sm truncate font-semibold ${isUnread ? "text-blue-400" : "text-foreground"}`}>
+            <span className="text-sm truncate font-semibold text-foreground">
               {listing.author_name ?? "Unknown"}
             </span>
             {listing.price_monthly && (
@@ -87,9 +85,6 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             )}
-            <button onClick={() => onStatusChange(listing.id, isUnread ? "read" : "new")} className="hidden md:inline shrink-0 text-muted-foreground hover:text-foreground transition-colors" title={isUnread ? "Mark as read" : "Mark as unread"}>
-              {isUnread ? <Mail className="w-3.5 h-3.5" /> : <MailOpen className="w-3.5 h-3.5" />}
-            </button>
             <button onClick={() => onToggleFavorited(listing.id, !listing.favorited)} className={`hidden md:inline shrink-0 transition-colors ${listing.favorited ? "text-yellow-400" : "text-muted-foreground hover:text-foreground"}`} title={listing.favorited ? "Unfavorite" : "Favorite"}>
               <Star className={`w-3.5 h-3.5 ${listing.favorited ? "fill-yellow-400" : ""}`} />
             </button>
@@ -111,9 +106,6 @@ export function ListingCard({ listing, onStatusChange, onToggleFavorited, onOpen
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             )}
-            <button onClick={() => onStatusChange(listing.id, isUnread ? "read" : "new")} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors" title={isUnread ? "Mark as read" : "Mark as unread"}>
-              {isUnread ? <Mail className="w-3.5 h-3.5" /> : <MailOpen className="w-3.5 h-3.5" />}
-            </button>
             <button onClick={() => onToggleFavorited(listing.id, !listing.favorited)} className={`shrink-0 transition-colors ${listing.favorited ? "text-yellow-400" : "text-muted-foreground hover:text-foreground"}`} title={listing.favorited ? "Unfavorite" : "Favorite"}>
               <Star className={`w-3.5 h-3.5 ${listing.favorited ? "fill-yellow-400" : ""}`} />
             </button>

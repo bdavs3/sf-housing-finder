@@ -15,7 +15,6 @@ create table listings (
   ai_score numeric(3,1) check (ai_score between 1.0 and 10.0),
   ai_summary text,
   move_in_date text,
-  status text default 'new' check (status in ('new', 'read', 'reached_out')),
   favorited boolean not null default false,
   flags text[] not null default '{}'
 );

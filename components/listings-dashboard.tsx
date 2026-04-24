@@ -23,7 +23,6 @@ export type Listing = {
   ai_summary: string | null
   move_in_date: string | null
   flags: string[]
-  status: "new" | "read" | "reached_out"
   favorited: boolean
 }
 
@@ -98,11 +97,6 @@ export function ListingsDashboard() {
 
     return () => { supabase.removeChannel(channel) }
   }, [])
-
-  const updateStatus = async (id: string, status: Listing["status"]) => {
-    setListings((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)))
-    await supabase.from("listings").update({ status }).eq("id", id)
-  }
 
   const toggleFavorited = async (id: string, favorited: boolean) => {
     setListings((prev) => prev.map((l) => (l.id === id ? { ...l, favorited } : l)))
@@ -183,7 +177,6 @@ export function ListingsDashboard() {
                   <ListingCard
                     key={listing.id}
                     listing={listing}
-                    onStatusChange={updateStatus}
                     onToggleFavorited={toggleFavorited}
                     onOpenLightbox={(urls, idx) => setLightbox({ urls, idx })}
                   />
