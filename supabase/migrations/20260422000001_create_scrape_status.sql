@@ -1,6 +1,6 @@
 create table scrape_status (
   id int primary key,
-  status text not null default 'idle' check (status in ('idle', 'scraping', 'ingesting')),
+  status text not null default 'idle' check (status in ('idle', 'scraping')),
   run_id text,
   post_count int,
   started_at timestamptz

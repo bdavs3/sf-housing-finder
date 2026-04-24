@@ -100,12 +100,6 @@ Deno.serve(async (req: Request) => {
     posts = Array.isArray(body) ? body : [body as ApifyPost]
   }
 
-  await supabase.from("scrape_status").update({
-    status: "ingesting",
-    post_count: posts.length,
-    started_at: new Date().toISOString(),
-  }).eq("id", 1)
-
   const newIds = await ingestPosts(supabase, posts)
 
   await supabase.from("scrape_status").update({ status: "idle", post_count: null }).eq("id", 1)

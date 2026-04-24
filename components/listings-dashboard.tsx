@@ -34,11 +34,9 @@ export function ListingsDashboard() {
   const [loading, setLoading] = useState(true)
   const [scraping, setScraping] = useState(false)
   const [scrapeMsg, setScrapeMsg] = useState("")
-  const [rescoring, setRescoring] = useState(false)
   const [lightbox, setLightbox] = useState<{ urls: string[]; idx: number } | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
-  const [scoringCount, setScoringCount] = useState(0)
-  const [scrapeStatus, setScrapeStatus] = useState<"idle" | "scraping" | "ingesting">("idle")
+  const [scrapeStatus, setScrapeStatus] = useState<"idle" | "scraping">("idle")
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -66,13 +64,13 @@ export function ListingsDashboard() {
 
   useEffect(() => {
     supabase.from("scrape_status").select("status").eq("id", 1).single().then(({ data }) => {
-      if (data) setScrapeStatus(data.status as "idle" | "scraping" | "ingesting")
+      if (data) setScrapeStatus(data.status as "idle" | "scraping")
     })
 
     const statusChannel = supabase
       .channel("scrape-status-realtime")
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "scrape_status" }, (payload) => {
-        setScrapeStatus(payload.new.status as "idle" | "scraping" | "ingesting")
+        setScrapeStatus(payload.new.status as "idle" | "scraping")
       })
       .subscribe()
 
@@ -80,20 +78,10 @@ export function ListingsDashboard() {
   }, [])
 
   useEffect(() => {
-    const pendingIds = new Set<string>()
-
     const channel = supabase
       .channel("listings-realtime")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "listings" }, (payload) => {
-        pendingIds.add(payload.new.id)
-        setScoringCount(pendingIds.size)
-      })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "listings" }, (payload) => {
         const updated = payload.new as Listing
-        if (pendingIds.has(updated.id)) {
-          pendingIds.delete(updated.id)
-          setScoringCount(pendingIds.size)
-        }
         if ((updated.lease_type === "long-term" || updated.lease_type === "unknown") && (updated.price_monthly ?? Infinity) <= 2000) {
           setListings((prev) => {
             const idx = prev.findIndex((l) => l.id === updated.id)
@@ -121,14 +109,8 @@ export function ListingsDashboard() {
     await supabase.from("listings").update({ favorited }).eq("id", id)
   }
 
-  const triggerRescore = async () => {
-    setRescoring(true)
-    try {
-      await fetch("/api/score", { method: "POST" })
-    } catch (err) {
-      console.error("Rescore failed:", err)
-    }
-    setRescoring(false)
+  const triggerScore = async () => {
+    await fetch("/api/score", { method: "POST" })
   }
 
   const triggerScrape = async () => {
@@ -159,14 +141,6 @@ export function ListingsDashboard() {
           {scrapeStatus === "scraping" && (
             <span className="text-xs text-muted-foreground shrink-0 animate-pulse">scraping...</span>
           )}
-          {scrapeStatus === "ingesting" && (
-            <span className="text-xs text-muted-foreground shrink-0 animate-pulse">ingesting...</span>
-          )}
-          {scrapeStatus === "idle" && scoringCount > 0 && (
-            <span className="text-xs text-muted-foreground shrink-0 animate-pulse">
-              scoring {scoringCount}...
-            </span>
-          )}
           {scrapeMsg && <span className="hidden md:block text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
           <span className="text-xs text-muted-foreground shrink-0">{listings.length} listings</span>
           <button
@@ -177,13 +151,12 @@ export function ListingsDashboard() {
             <Star className={`w-4 h-4 ${favoritesOnly ? "fill-yellow-400" : ""}`} />
           </button>
           <button
-            onClick={triggerRescore}
-            disabled={rescoring}
-            className="shrink-0 flex items-center gap-2 bg-secondary text-secondary-foreground px-3 md:px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-secondary/80 transition-colors"
-            title="Re-score unscored listings"
+            onClick={triggerScore}
+            className="shrink-0 flex items-center gap-2 bg-secondary text-secondary-foreground px-3 md:px-4 py-2 rounded-md text-sm font-medium hover:bg-secondary/80 transition-colors"
+            title="Score unscored listings"
           >
-            <Wand2 className={`w-4 h-4 ${rescoring ? "animate-pulse" : ""}`} />
-            <span className="hidden md:inline">Re-score</span>
+            <Wand2 className="w-4 h-4" />
+            <span className="hidden md:inline">Score</span>
           </button>
           <button
             onClick={triggerScrape}
