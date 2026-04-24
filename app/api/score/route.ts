@@ -19,10 +19,10 @@ export async function POST() {
 
   const ids = (data ?? []).map((r) => r.id)
 
-  const results = await Promise.all(ids.map(async (id) => {
+  await Promise.all(ids.map(async (id) => {
     const result = await supabase.functions.invoke("score-listing", { body: { id } })
     if (result.error) {
-      const body = await (result.error as any).context?.text?.()
+      const body = await (result.error).context?.text?.()
       console.error(`invoke error [${id}]:`, result.error.message, body)
     }
     return result
