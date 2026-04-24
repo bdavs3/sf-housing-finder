@@ -5,7 +5,10 @@ select cron.schedule(
   $$
     select net.http_post(
       url := 'https://sf-housing-finder.vercel.app/api/trigger-apify',
-      headers := '{"Content-Type": "application/json"}'::jsonb,
+      headers := json_build_object(
+        'Content-Type', 'application/json',
+        'x-vercel-protection-bypass', (select decrypted_secret from vault.decrypted_secrets where name = 'VERCEL_AUTOMATION_BYPASS_SECRET')
+      )::jsonb,
       body := '{}'::jsonb
     )
   $$
@@ -18,7 +21,10 @@ select cron.schedule(
   $$
     select net.http_post(
       url := 'https://sf-housing-finder.vercel.app/api/score',
-      headers := '{"Content-Type": "application/json"}'::jsonb,
+      headers := json_build_object(
+        'Content-Type', 'application/json',
+        'x-vercel-protection-bypass', (select decrypted_secret from vault.decrypted_secrets where name = 'VERCEL_AUTOMATION_BYPASS_SECRET')
+      )::jsonb,
       body := '{}'::jsonb
     )
   $$
