@@ -13,12 +13,36 @@ Deno.serve(async (req: Request) => {
 
   const { data: listing } = await supabase
     .from("listings")
-    .select("raw_text, ocr_text, image_urls")
+    .select("raw_text, ocr_text, image_urls, author_name")
     .eq("id", id)
     .single()
 
   if (!listing) {
     return new Response("Not found", { status: 404 })
+  }
+
+  const { data: duplicate } = await supabase
+    .from("listings")
+    .select("price_monthly, neighborhood, lease_type, move_in_date, ai_score, ai_summary, flags")
+    .eq("raw_text", listing.raw_text)
+    .eq("author_name", listing.author_name)
+    .not("ai_score", "is", null)
+    .neq("id", id)
+    .limit(1)
+    .single()
+
+  if (duplicate) {
+    console.log(`[score-listing] duplicate found, copying score for id=${id}`)
+    await supabase.from("listings").update({
+      price_monthly: duplicate.price_monthly,
+      neighborhood: duplicate.neighborhood,
+      lease_type: duplicate.lease_type,
+      move_in_date: duplicate.move_in_date,
+      ai_score: duplicate.ai_score,
+      ai_summary: duplicate.ai_summary,
+      flags: duplicate.flags,
+    }).eq("id", id)
+    return new Response(JSON.stringify(duplicate), { headers: { "Content-Type": "application/json" } })
   }
 
   const imageUrls: string[] = listing.image_urls ?? []

@@ -57,7 +57,14 @@ export function ListingsDashboard() {
       .order("posted_at", { ascending: false, nullsFirst: false })
       .then(({ data, error }) => {
         if (error) console.error("Supabase error:", error)
-        setListings((data as Listing[]) ?? [])
+        const seen = new Set<string>()
+        const deduped = ((data as Listing[]) ?? []).filter((l) => {
+          const key = `${l.author_name}||${l.raw_text}`
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+        setListings(deduped)
         setLoading(false)
       })
   }, [])
