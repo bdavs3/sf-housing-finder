@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@supabase/supabase-js"
 
 export async function POST() {
   try {
@@ -40,7 +40,7 @@ export async function POST() {
 
     if (res.ok) {
       const runId = (data as { data?: { id?: string } })?.data?.id ?? null
-      const supabase = createClient()
+      const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
       await supabase.from("scrape_status").update({
         status: "scraping",
         run_id: runId,
