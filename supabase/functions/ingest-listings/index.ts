@@ -108,10 +108,6 @@ Deno.serve(async (req: Request) => {
 
   const newIds = await ingestPosts(supabase, posts)
 
-  for (const id of newIds) {
-    supabase.functions.invoke("score-listing", { body: { id } })
-  }
-
   await supabase.from("scrape_status").update({ status: "idle", post_count: null }).eq("id", 1)
 
   return new Response(JSON.stringify({ ingested: newIds.length }), {

@@ -97,7 +97,7 @@ Deno.serve(async (req: Request) => {
     return new Response("Failed to parse AI response", { status: 500 })
   }
 
-  await supabase
+  const { error: updateError } = await supabase
     .from("listings")
     .update({
       price_monthly: (result.price_monthly as number) ?? null,
@@ -109,6 +109,12 @@ Deno.serve(async (req: Request) => {
       flags: Array.isArray(result.flags) ? result.flags : [],
     })
     .eq("id", id)
+
+  if (updateError) {
+    console.log(`[score-listing] db update error: ${updateError.message}`)
+  } else {
+    console.log(`[score-listing] db update ok: id=${id}`)
+  }
 
   return new Response(JSON.stringify(result), {
     headers: { "Content-Type": "application/json" },

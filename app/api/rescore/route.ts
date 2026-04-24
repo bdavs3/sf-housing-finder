@@ -11,6 +11,7 @@ export async function POST() {
     .from("listings")
     .select("id")
     .is("ai_score", null)
+    .limit(10)
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -18,9 +19,7 @@ export async function POST() {
 
   const ids = (data ?? []).map((r) => r.id)
 
-  for (const id of ids) {
-    supabase.functions.invoke("score-listing", { body: { id } })
-  }
+  await Promise.all(ids.map((id) => supabase.functions.invoke("score-listing", { body: { id } })))
 
   return NextResponse.json({ queued: ids.length })
 }
