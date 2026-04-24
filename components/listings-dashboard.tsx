@@ -53,7 +53,7 @@ export function ListingsDashboard() {
       .select("*")
       .in("lease_type", ["long-term", "unknown"])
       .lte("price_monthly", 2000)
-      .not("flags", "cs", '["Seeking housing"]')
+      .not("flags", "cs", '{"Seeking housing"}')
       .order("posted_at", { ascending: false, nullsFirst: false })
       .then(({ data, error }) => {
         if (error) console.error("Supabase error:", error)
