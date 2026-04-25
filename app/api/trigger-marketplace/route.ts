@@ -18,7 +18,7 @@ export async function POST() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           startUrls,
-          resultsLimit: 5,
+          resultsLimit: process.env.MARKETPLACE_RESULTS_LIMIT ? parseInt(process.env.MARKETPLACE_RESULTS_LIMIT) : 50,
           includeListingDetails: true,
         }),
       },

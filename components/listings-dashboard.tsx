@@ -87,27 +87,6 @@ export function ListingsDashboard() {
       })
   }, [])
 
-  useEffect(() => {
-    const channel = supabase
-      .channel("listings-realtime")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "listings" }, (payload) => {
-        const updated = payload.new as Listing
-        if ((updated.lease_type === "long-term" || updated.lease_type === "unknown") && (updated.price_monthly ?? Infinity) <= 2000 && !updated.flags?.includes("Seeking housing")) {
-          setListings((prev) => {
-            const idx = prev.findIndex((l) => l.id === updated.id)
-            if (idx >= 0) {
-              const next = [...prev]
-              next[idx] = updated
-              return next
-            }
-            return [updated, ...prev]
-          })
-        }
-      })
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [])
 
   const toggleFavorited = async (id: string, favorited: boolean) => {
     setListings((prev) => prev.map((l) => (l.id === id ? { ...l, favorited } : l)))

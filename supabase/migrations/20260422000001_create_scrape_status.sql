@@ -7,5 +7,3 @@ create table scrape_status (
 );
 
 insert into scrape_status (id, status) values (1, 'idle');
-
-alter publication supabase_realtime add table scrape_status;

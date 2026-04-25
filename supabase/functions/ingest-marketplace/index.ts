@@ -24,12 +24,14 @@ interface MarketplaceListing {
   listingPhotos?: MarketplacePhoto[]
   primaryListingPhoto?: { photo_image_url?: string }
   itemUrl?: string
+  timestamp?: string
   location?: {
     reverse_geocode?: {
       city?: string
       state?: string
     }
   }
+  locationText?: { text?: string }
   details?: MarketplaceDetail[]
   postedAt?: string
   listedDate?: string
@@ -108,11 +110,11 @@ async function ingestListings(supabase: ReturnType<typeof createClient>, items: 
 
     const details = item.details ?? []
     const flags = parseFlags(details)
-    const postedAt = item.postedAt ?? item.listedDate ?? parsePostedAt(details) ?? null
+    const postedAt = item.timestamp ?? item.postedAt ?? item.listedDate ?? parsePostedAt(details) ?? null
     const price = item.listingPrice?.amount ? Math.round(parseFloat(item.listingPrice.amount)) : null
 
     // City-level location as a neighborhood hint (Claude will refine for SF listings)
-    const city = item.location?.reverse_geocode?.city ?? null
+    const city = item.location?.reverse_geocode?.city ?? item.locationText?.text?.split(",")[0]?.trim() ?? null
     const state = item.location?.reverse_geocode?.state ?? null
     const neighborhood = city ? (state && state !== "CA" ? `${city}, ${state}` : city) : null
 
@@ -122,7 +124,7 @@ async function ingestListings(supabase: ReturnType<typeof createClient>, items: 
         {
           apify_id: `mp_${item.id}`,
           source: "marketplace",
-          author_name: null,
+          author_name: "Marketplace",
           group_title: "marketplace",
           post_url: item.itemUrl ?? null,
           posted_at: postedAt,
