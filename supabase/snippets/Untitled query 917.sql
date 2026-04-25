@@ -1,1 +1,0 @@
-select * from listings where ai_score is not null;

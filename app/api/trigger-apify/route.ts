@@ -38,17 +38,6 @@ export async function POST() {
       data = { raw: text }
     }
 
-    if (res.ok) {
-      const runId = (data as { data?: { id?: string } })?.data?.id ?? null
-      const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!)
-      await supabase.from("scrape_status").update({
-        status: "scraping",
-        run_id: runId,
-        started_at: new Date().toISOString(),
-        post_count: null,
-      }).eq("id", 1)
-    }
-
     return NextResponse.json(data, { status: res.status })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 })
