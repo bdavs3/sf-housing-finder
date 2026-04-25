@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { ListingCard } from "./listing-card"
-import { Home, RefreshCw, ShoppingBag, Star, TrendingUp, Wand2 } from "lucide-react"
+import { Home, ShoppingBag, Star, TrendingUp, Users, Wand2 } from "lucide-react"
 
 export type Listing = {
   id: string
@@ -51,7 +51,6 @@ export function ListingsDashboard() {
   const [lightbox, setLightbox] = useState<{ urls: string[]; idx: number } | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [sortBy, setSortBy] = useState<"recent" | "score">("recent")
-  const [scrapeStatus, setScrapeStatus] = useState<"idle" | "scraping">("idle")
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -86,21 +85,6 @@ export function ListingsDashboard() {
         setListings(kept)
         setLoading(false)
       })
-  }, [])
-
-  useEffect(() => {
-    supabase.from("scrape_status").select("status").eq("id", 1).single().then(({ data }) => {
-      if (data) setScrapeStatus(data.status as "idle" | "scraping")
-    })
-
-    const statusChannel = supabase
-      .channel("scrape-status-realtime")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "scrape_status" }, (payload) => {
-        setScrapeStatus(payload.new.status as "idle" | "scraping")
-      })
-      .subscribe()
-
-    return () => { supabase.removeChannel(statusChannel) }
   }, [])
 
   useEffect(() => {
@@ -177,9 +161,6 @@ export function ListingsDashboard() {
         <h1 className="hidden md:block text-xl font-bold shrink-0">SF Housing Finder</h1>
         <Home className="block md:hidden w-5 h-5 shrink-0" />
         <div className="flex items-center gap-3 min-w-0">
-          {scrapeStatus === "scraping" && (
-            <span className="text-xs text-muted-foreground shrink-0 animate-pulse">scraping...</span>
-          )}
           {scrapeMsg && <span className="hidden md:block text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
           <span className="text-xs text-muted-foreground shrink-0">{listings.length} listings</span>
           <button
@@ -216,10 +197,10 @@ export function ListingsDashboard() {
           <button
             onClick={triggerScrape}
             disabled={scraping}
-            className="shrink-0 flex items-center gap-2 bg-primary text-primary-foreground px-3 md:px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-primary/90 transition-colors"
+            className="shrink-0 flex items-center gap-2 bg-secondary text-secondary-foreground px-3 md:px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-secondary/80 transition-colors"
           >
-            <RefreshCw className={`w-4 h-4 ${scraping ? "animate-spin" : ""}`} />
-            <span className="hidden md:inline">Scrape Now</span>
+            <Users className={`w-4 h-4 ${scraping ? "animate-pulse" : ""}`} />
+            <span className="hidden md:inline">Groups</span>
           </button>
         </div>
       </header>
