@@ -1,2 +1,1 @@
-ALTER TABLE listings ADD COLUMN move_in_date text;
-ALTER TABLE listings ADD COLUMN favorited boolean not null default false;
+select * from listings where ai_score is not null;

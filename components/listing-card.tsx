@@ -30,6 +30,10 @@ interface Props {
   onOpenLightbox: (urls: string[], idx: number) => void
 }
 
+function isNew(createdAt: string) {
+  return Date.now() - new Date(createdAt).getTime() < 24 * 60 * 60 * 1000
+}
+
 export function ListingCard({ listing, onToggleFavorited, onOpenLightbox }: Props) {
   const images = listing.image_urls ?? []
   const [showModal, setShowModal] = useState(false)
@@ -65,6 +69,9 @@ export function ListingCard({ listing, onToggleFavorited, onOpenLightbox }: Prop
             <span className="text-sm truncate font-semibold text-foreground">
               {listing.author_name ?? "Unknown"}
             </span>
+            {isNew(listing.created_at) && (
+              <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded border bg-blue-900/50 text-blue-300 border-blue-800">New</span>
+            )}
             {listing.price_monthly && (
               <span className="hidden md:inline text-sm shrink-0 text-foreground font-medium">
                 ${listing.price_monthly.toLocaleString()}/mo
