@@ -27,7 +27,7 @@ Deno.serve(async (req: Request) => {
 
   const { data: listing } = await supabase
     .from("listings")
-    .select("raw_text, ocr_text, image_urls, author_name, posted_at")
+    .select("raw_text, ocr_text, image_urls, author_name, posted_at, price_monthly, neighborhood, flags")
     .eq("id", id)
     .single()
 
@@ -88,9 +88,18 @@ Deno.serve(async (req: Request) => {
 
   console.log(`[score-listing] sending to claude: ${imageBlocks.length} images`)
 
+  const structuredHints: string[] = []
+  if (listing.price_monthly != null) structuredHints.push(`Price: $${listing.price_monthly}/month`)
+  if (listing.neighborhood) structuredHints.push(`Neighborhood: ${listing.neighborhood}`)
+  if (listing.flags?.length) structuredHints.push(`Known flags: ${listing.flags.join(", ")}`)
+
   const textBlock = {
     type: "text",
-    text: `Post text:\n${listing.raw_text ?? "(none)"}\n\nOCR text from images:\n${listing.ocr_text ?? "(none)"}`,
+    text: [
+      structuredHints.length ? `Pre-extracted structured data (treat as ground truth):\n${structuredHints.join("\n")}` : null,
+      `Post text:\n${listing.raw_text ?? "(none)"}`,
+      `OCR text from images:\n${listing.ocr_text ?? "(none)"}`,
+    ].filter(Boolean).join("\n\n"),
   }
 
   const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
@@ -136,16 +145,22 @@ Deno.serve(async (req: Request) => {
     return new Response("Failed to parse AI response", { status: 500 })
   }
 
+  // Merge Claude's flags with any pre-extracted flags (e.g. from structured Marketplace data)
+  const claudeFlags = Array.isArray(result.flags) ? result.flags as string[] : []
+  const preFlags = listing.flags ?? []
+  const mergedFlags = [...new Set([...preFlags, ...claudeFlags])]
+
   const { error: updateError } = await supabase
     .from("listings")
     .update({
-      price_monthly: (result.price_monthly as number) ?? null,
-      neighborhood: (result.neighborhood as string) ?? null,
+      // Fall back to pre-extracted value if Claude couldn't determine it from text
+      price_monthly: (result.price_monthly as number) ?? listing.price_monthly ?? null,
+      neighborhood: (result.neighborhood as string) ?? listing.neighborhood ?? null,
       lease_type: (result.lease_type as string) ?? "unknown",
       move_in_date: (result.move_in_date as string) ?? null,
       ai_score: (result.ai_score as number) ?? null,
       ai_summary: (result.ai_summary as string) ?? null,
-      flags: Array.isArray(result.flags) ? result.flags : [],
+      flags: mergedFlags,
     })
     .eq("id", id)
 

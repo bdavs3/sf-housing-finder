@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { ListingCard } from "./listing-card"
-import { Home, RefreshCw, Star, TrendingUp, Wand2 } from "lucide-react"
+import { Home, RefreshCw, ShoppingBag, Star, TrendingUp, Wand2 } from "lucide-react"
 
 export type Listing = {
   id: string
@@ -47,6 +47,7 @@ export function ListingsDashboard() {
   const [loading, setLoading] = useState(true)
   const [scraping, setScraping] = useState(false)
   const [scrapeMsg, setScrapeMsg] = useState("")
+  const [scrapingMarketplace, setScrapingMarketplace] = useState(false)
   const [lightbox, setLightbox] = useState<{ urls: string[]; idx: number } | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [sortBy, setSortBy] = useState<"recent" | "score">("recent")
@@ -133,6 +134,24 @@ export function ListingsDashboard() {
     await fetch("/api/score", { method: "POST" })
   }
 
+  const triggerMarketplace = async () => {
+    setScrapingMarketplace(true)
+    setScrapeMsg("")
+    try {
+      const res = await fetch("/api/trigger-marketplace", { method: "POST" })
+      const data = await res.json()
+      if (res.ok) {
+        setScrapeMsg(`Marketplace run started: ${data.data?.id ?? data.id ?? "ok"}`)
+      } else {
+        const msg = data?.error?.message ?? data?.error ?? data?.message ?? JSON.stringify(data)
+        setScrapeMsg(`Marketplace error ${res.status}: ${msg}`)
+      }
+    } catch (err) {
+      setScrapeMsg(`Marketplace failed: ${String(err)}`)
+    }
+    setScrapingMarketplace(false)
+  }
+
   const triggerScrape = async () => {
     setScraping(true)
     setScrapeMsg("")
@@ -184,6 +203,15 @@ export function ListingsDashboard() {
           >
             <Wand2 className="w-4 h-4" />
             <span className="hidden md:inline">Score</span>
+          </button>
+          <button
+            onClick={triggerMarketplace}
+            disabled={scrapingMarketplace}
+            className="shrink-0 flex items-center gap-2 bg-secondary text-secondary-foreground px-3 md:px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 hover:bg-secondary/80 transition-colors"
+            title="Scrape Facebook Marketplace"
+          >
+            <ShoppingBag className={`w-4 h-4 ${scrapingMarketplace ? "animate-pulse" : ""}`} />
+            <span className="hidden md:inline">Marketplace</span>
           </button>
           <button
             onClick={triggerScrape}
