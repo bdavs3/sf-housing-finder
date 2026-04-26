@@ -1,8 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "jsr:@supabase/supabase-js@2"
 
-const SYSTEM_PROMPT = "<Redacted>"
-
 function trigramSim(a: string, b: string): number {
   if (!a || !b) return 0
   const tgrams = (s: string) => {
@@ -112,7 +110,7 @@ Deno.serve(async (req: Request) => {
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
       max_tokens: 1024,
-      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      system: [{ type: "text", text: atob(Deno.env.get("SCORING_PROMPT")!), cache_control: { type: "ephemeral" } }],
       messages: [{ role: "user", content: [...imageBlocks, textBlock] }],
     }),
   })
