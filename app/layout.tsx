@@ -9,7 +9,7 @@ const defaultUrl = process.env.VERCEL_URL
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
   title: "SF Housing Finder",
-  description: "Browse and score SF housing listings from Facebook groups",
+  description: "Browse and score SF housing listings from Facebook groups and Marketplace",
 }
 
 const geistSans = Geist({
