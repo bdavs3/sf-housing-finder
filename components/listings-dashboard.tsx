@@ -125,7 +125,7 @@ export function ListingsDashboard() {
     setScraping(true)
     setScrapeMsg("")
     try {
-      const res = await fetch("/api/trigger-apify", { method: "POST" })
+      const res = await fetch("/api/trigger-groups", { method: "POST" })
       const data = await res.json()
       if (res.ok) {
         setScrapeMsg(`Run started: ${data.data?.id ?? data.id ?? "ok"}`)
