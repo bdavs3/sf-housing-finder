@@ -86,7 +86,6 @@ export function ListingCard({ listing, onToggleFavorited, onOpenLightbox }: Prop
             <span className="hidden md:inline ml-auto text-xs text-muted-foreground whitespace-nowrap shrink-0">
               {formatDateTime(listing.posted_at)}
             </span>
-            <div className="hidden md:block md:hidden" />
             {listing.post_url && (
               <a href={listing.post_url} target="_blank" rel="noopener noreferrer" className="hidden md:inline shrink-0 text-muted-foreground hover:text-foreground">
                 <ExternalLink className="w-3.5 h-3.5" />
