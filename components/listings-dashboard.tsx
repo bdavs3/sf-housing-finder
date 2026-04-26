@@ -50,7 +50,10 @@ export function ListingsDashboard() {
   const [scrapingMarketplace, setScrapingMarketplace] = useState(false)
   const [lightbox, setLightbox] = useState<{ urls: string[]; idx: number } | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [newOnly, setNewOnly] = useState(false)
   const [sortBy, setSortBy] = useState<"recent" | "score">("recent")
+  const [page, setPage] = useState(0)
+  const PAGE_SIZE = 100
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -143,14 +146,21 @@ export function ListingsDashboard() {
           {scrapeMsg && <span className="hidden md:block text-xs text-muted-foreground max-w-xs truncate">{scrapeMsg}</span>}
           <span className="text-xs text-muted-foreground shrink-0">{listings.length} listings</span>
           <button
-            onClick={() => setSortBy((v) => v === "recent" ? "score" : "recent")}
+            onClick={() => { setNewOnly((v) => !v); setPage(0) }}
+            className={`shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded border transition-colors ${newOnly ? "bg-blue-900/50 text-blue-300 border-blue-800" : "text-muted-foreground border-border hover:text-foreground hover:border-foreground/40"}`}
+            title={newOnly ? "Show all" : "Show new only"}
+          >
+            NEW
+          </button>
+          <button
+            onClick={() => { setSortBy((v) => v === "recent" ? "score" : "recent"); setPage(0) }}}
             className={`shrink-0 transition-colors ${sortBy === "score" ? "text-blue-400" : "text-muted-foreground hover:text-foreground"}`}
             title={sortBy === "score" ? "Sort by most recent" : "Sort by best score"}
           >
             <TrendingUp className="w-4 h-4" />
           </button>
           <button
-            onClick={() => setFavoritesOnly((v) => !v)}
+            onClick={() => { setFavoritesOnly((v) => !v); setPage(0) }}}
             className={`shrink-0 transition-colors ${favoritesOnly ? "text-yellow-400" : "text-muted-foreground hover:text-foreground"}`}
             title={favoritesOnly ? "Show all" : "Show favorites"}
           >
@@ -189,23 +199,50 @@ export function ListingsDashboard() {
           <p className="text-center text-muted-foreground py-20">Loading...</p>
         ) : (
           (() => {
-            const filtered = favoritesOnly ? listings.filter((l) => l.favorited) : listings
-            const visible = sortBy === "score"
+            const now = Date.now()
+            const filtered = listings
+              .filter((l) => !favoritesOnly || l.favorited)
+              .filter((l) => !newOnly || now - new Date(l.created_at).getTime() < 24 * 60 * 60 * 1000)
+            const sorted = sortBy === "score"
               ? [...filtered].sort((a, b) => (b.ai_score ?? -1) - (a.ai_score ?? -1))
               : filtered
-            return visible.length === 0 ? (
+            const totalPages = Math.ceil(sorted.length / PAGE_SIZE)
+            const clampedPage = Math.min(page, Math.max(0, totalPages - 1))
+            const visible = sorted.slice(clampedPage * PAGE_SIZE, (clampedPage + 1) * PAGE_SIZE)
+            return sorted.length === 0 ? (
               <p className="text-center text-muted-foreground py-20">No listings found.</p>
             ) : (
-              <div className="border rounded-lg overflow-hidden">
-                {visible.map((listing) => (
-                  <ListingCard
-                    key={listing.id}
-                    listing={listing}
-                    onToggleFavorited={toggleFavorited}
-                    onOpenLightbox={(urls, idx) => setLightbox({ urls, idx })}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="border rounded-lg overflow-hidden">
+                  {visible.map((listing) => (
+                    <ListingCard
+                      key={listing.id}
+                      listing={listing}
+                      onToggleFavorited={toggleFavorited}
+                      onOpenLightbox={(urls, idx) => setLightbox({ urls, idx })}
+                    />
+                  ))}
+                </div>
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-4 py-6 text-sm text-muted-foreground">
+                    <button
+                      onClick={() => { setPage((p) => Math.max(0, p - 1)); window.scrollTo(0, 0) }}
+                      disabled={clampedPage === 0}
+                      className="px-3 py-1.5 rounded border border-border hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      ← Prev
+                    </button>
+                    <span>Page {clampedPage + 1} of {totalPages}</span>
+                    <button
+                      onClick={() => { setPage((p) => Math.min(totalPages - 1, p + 1)); window.scrollTo(0, 0) }}
+                      disabled={clampedPage === totalPages - 1}
+                      className="px-3 py-1.5 rounded border border-border hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                )}
+              </>
             )
           })()
         )}
