@@ -153,14 +153,14 @@ export function ListingsDashboard() {
             NEW
           </button>
           <button
-            onClick={() => { setSortBy((v) => v === "recent" ? "score" : "recent"); setPage(0) }}}
+            onClick={() => { setSortBy((v) => v === "recent" ? "score" : "recent"); setPage(0) }}
             className={`shrink-0 transition-colors ${sortBy === "score" ? "text-blue-400" : "text-muted-foreground hover:text-foreground"}`}
             title={sortBy === "score" ? "Sort by most recent" : "Sort by best score"}
           >
             <TrendingUp className="w-4 h-4" />
           </button>
           <button
-            onClick={() => { setFavoritesOnly((v) => !v); setPage(0) }}}
+            onClick={() => { setFavoritesOnly((v) => !v); setPage(0) }}
             className={`shrink-0 transition-colors ${favoritesOnly ? "text-yellow-400" : "text-muted-foreground hover:text-foreground"}`}
             title={favoritesOnly ? "Show all" : "Show favorites"}
           >
