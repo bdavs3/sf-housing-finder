@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { ListingCard } from "./listing-card"
-import { Home, ShoppingBag, Star, TrendingUp, Users, Wand2 } from "lucide-react"
+import { Check, Home, ShoppingBag, Star, TrendingUp, Users, Wand2 } from "lucide-react"
 
 export type Listing = {
   id: string
@@ -96,8 +96,11 @@ export function ListingsDashboard() {
     await supabase.from("listings").update({ favorited }).eq("id", id)
   }
 
-  const triggerScore = async () => {
-    await fetch("/api/score", { method: "POST" })
+  const [scoreSent, setScoreSent] = useState(false)
+  const triggerScore = () => {
+    fetch("/api/score", { method: "POST" })
+    setScoreSent(true)
+    setTimeout(() => setScoreSent(false), 2000)
   }
 
   const triggerMarketplace = async () => {
@@ -168,11 +171,12 @@ export function ListingsDashboard() {
           </button>
           <button
             onClick={triggerScore}
-            className="shrink-0 flex items-center gap-2 bg-secondary text-secondary-foreground px-3 md:px-4 py-2 rounded-md text-sm font-medium hover:bg-secondary/80 transition-colors"
+            disabled={scoreSent}
+            className="shrink-0 flex items-center gap-2 bg-secondary text-secondary-foreground px-3 md:px-4 py-2 rounded-md text-sm font-medium hover:bg-secondary/80 disabled:opacity-60 transition-colors"
             title="Score unscored listings"
           >
-            <Wand2 className="w-4 h-4" />
-            <span className="hidden md:inline">Score</span>
+            {scoreSent ? <Check className="w-4 h-4 text-green-400" /> : <Wand2 className="w-4 h-4" />}
+            <span className="hidden md:inline w-[2.5rem] text-center">{scoreSent ? "Sent" : "Score"}</span>
           </button>
           <button
             onClick={triggerMarketplace}
